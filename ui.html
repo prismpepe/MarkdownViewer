@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown ビューア</title>
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --side: #f6f8fa;
+  --border: #d0d7de; --accent: #0969da; --sel: #ddf4ff; --code: #f3f4f6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --side: #161b22;
+    --border: #30363d; --accent: #58a6ff; --sel: #1f3a5f; --code: #1c2128;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; flex-direction: column; background: var(--bg); color: var(--fg);
+  font: 14px/1.5 "Yu Gothic UI", "Segoe UI", sans-serif; }
+#body { flex: 1; min-height: 0; display: flex; }
+#side { width: 320px; min-width: 200px; background: var(--side);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+#side.hidden { display: none; }
+#toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px;
+  background: var(--side); border-bottom: 1px solid var(--border); }
+#zoombox { display: flex; align-items: center; gap: 4px; }
+#zoombox button { padding: 6px 10px; min-width: 34px; }
+#zoombox input { width: 64px; padding: 5px 4px; font: inherit; text-align: right;
+  color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+#zoombox button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+#toolbar .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+#toolbar button { padding: 6px 14px; }
+#toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+#side h2 { margin: 0; padding: 8px 10px 0; font-size: 12px; color: var(--muted); font-weight: 600; }
+button { font: inherit; padding: 4px 10px; border: 1px solid var(--border);
+  background: var(--bg); color: var(--fg); border-radius: 6px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+#folder { padding: 6px 10px; color: var(--muted); font-size: 12px;
+  word-break: break-all; border-bottom: 1px solid var(--border); }
+#filter { margin: 8px; padding: 5px 8px; font: inherit; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+#count { padding: 0 10px 4px; color: var(--muted); font-size: 12px; }
+#list { flex: 1; overflow-y: auto; }
+.item { padding: 5px 10px; cursor: pointer; border-left: 3px solid transparent; }
+.item:hover { background: var(--sel); }
+.item.sel { background: var(--sel); border-left-color: var(--accent); }
+.dirhead { padding: 6px 10px 2px; margin-top: 4px; font-size: 12px; font-weight: 600;
+  color: var(--muted); word-break: break-all; }
+.item .name { display: block; font-weight: 600; word-break: break-all; }
+.item .dir { display: block; color: var(--muted); font-size: 12px; word-break: break-all; }
+#main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#top { padding: 6px 12px; border-bottom: 1px solid var(--border);
+  display: flex; gap: 8px; align-items: center; }
+#title { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#scroll { flex: 1; overflow: auto; }
+#content { padding: 24px 32px 64px; transform-origin: top left; }
+#empty { color: var(--muted); text-align: center; margin-top: 20vh; }
+#empty button { margin-top: 12px; padding: 8px 18px; }
+#msg { color: #cf222e; padding: 8px 12px; }
+
+#content h1, #content h2 { border-bottom: 1px solid var(--border); padding-bottom: .3em; }
+#content h1, #content h2, #content h3, #content h4 { margin: 1.4em 0 .6em; line-height: 1.25; }
+#content a { color: var(--accent); }
+#content code { background: var(--code); padding: .15em .4em; border-radius: 4px;
+  font: 13px Consolas, "Cascadia Mono", monospace; }
+#content pre { background: var(--code); padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
+#content pre code { padding: 0; background: none; }
+#content blockquote { margin: 0; padding: 0 1em; color: var(--muted);
+  border-left: 4px solid var(--border); }
+#content table { border-collapse: collapse; margin: 1em 0; }
+#content th, #content td { border: 1px solid var(--border); padding: 6px 12px; }
+#content th { background: var(--side); }
+#content pre.mermaid-src { background: none; padding: 0; }
+#content .diagram { text-align: center; overflow-x: auto; margin: 1em 0; }
+#content .diagram svg { max-width: 100%; height: auto; }
+#content .diagram-error { border: 1px solid #cf222e; border-radius: 6px; padding: 8px 12px; margin: 1em 0; }
+#content .diagram-error p { margin: 0 0 6px; color: #cf222e; }
+#content img { max-width: 100%; }
+#content hr { border: 0; border-top: 1px solid var(--border); }
+#content li.task-list-item { list-style: none; margin-left: -1.4em; }
+
+/* 印刷・PDF: 画面の部品を隠し、本文だけを紙に流す */
+@media print {
+  :root { --bg: #fff; --fg: #000; --muted: #444; --side: #f2f2f2; --border: #999; --accent: #0645ad; --code: #f2f2f2; }
+  html, body { height: auto !important; overflow: visible !important; display: block !important;
+    background: #fff !important; color: #000 !important; }
+  #toolbar, #msg, #side, #top, #pveil { display: none !important; }
+  #body, #main, #scroll { display: block !important; overflow: visible !important; height: auto !important;
+    width: auto !important; flex: none !important; min-height: 0 !important; }
+  #content { zoom: 1 !important; padding: 0 !important; }
+  #content h1, #content h2, #content h3, #content h4, #content h5, #content h6 { break-after: avoid; }
+  #content tr, #content img, #content .diagram, #content blockquote, #content li { break-inside: avoid; }
+  #content thead { display: table-header-group; }
+  #content pre { white-space: pre-wrap; word-break: break-all; overflow: visible; break-inside: avoid; }
+  #content .diagram { overflow: visible; }
+}
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <button id="btnFolder" class="primary" title="Ctrl+O">📁 フォルダーを開く</button>
+  <button id="btnFile" title="Ctrl+Shift+O">📄 ファイルを開く</button>
+  <span class="sep"></span>
+  <button id="btnSide" title="Ctrl+B">☰ 一覧を隠す</button>
+  <button id="btnReload" title="F5">↻ 更新</button>
+  <span class="sep"></span>
+  <button id="btnPrint" title="Ctrl+P">🖨 印刷／PDF</button>
+  <span class="sep"></span>
+  <span id="zoombox">
+    <span>表示倍率</span>
+    <button id="zOut" title="縮小 (Ctrl+−)">−</button>
+    <input id="zVal" type="number" min="10" max="500" step="5" value="100" title="倍率(%)を直接入力">%
+    <button id="zIn" title="拡大 (Ctrl++)">＋</button>
+    <button id="z100" title="等倍 (Ctrl+0)">100%</button>
+    <button id="zFit" title="横幅いっぱいに収める (Ctrl+9)">↔ 全体表示</button>
+  </span>
+</div>
+<div id="msg" hidden></div>
+<div id="body">
+<aside id="side">
+  <h2>フォルダー</h2>
+  <div id="folder">未選択（上の「フォルダーを開く」で選びます）</div>
+  <input id="filter" type="search" placeholder="🔍 ファイル名で絞り込み">
+  <div id="count"></div>
+  <div id="list"></div>
+</aside>
+<div id="main">
+  <div id="top"><span id="title"></span></div>
+  <div id="scroll">
+    <div id="content"><div id="empty"></div></div>
+  </div>
+</div>
+</div>
+<script>
+/*PRINT_JS*/
+</script>
+<script>
+let api = null, folder = null, files = [], current = null;
+const $ = id => document.getElementById(id);
+
+function toggleSide() {
+  const h = $('side').classList.toggle('hidden');
+  $('btnSide').textContent = h ? '☰ 一覧を表示' : '☰ 一覧を隠す';
+}
+
+function showEmpty() {
+  if (current) return;
+  const e = $('empty');
+  if (!folder) e.innerHTML = '<p><b>Markdown ビューア</b></p><p>上の「フォルダーを開く」で、読みたいファイルのあるフォルダーを選んでください。<br>一覧からファイルを選ぶと、ここに表示されます。</p><p>1つだけ読むときは「ファイルを開く」です。</p>';
+  else if (files.length) e.innerHTML = '<p>← 左の一覧から、読みたいファイルを選んでください。</p>';
+  else e.innerHTML = '<p>このフォルダーには Markdown ファイルがありません。</p><p>別のフォルダーを選ぶには「フォルダーを開く」を押してください。</p>';
+}
+
+function showMsg(t) { const m = $('msg'); m.textContent = t || ''; m.hidden = !t; }
+
+function renderList() {
+  const q = $('filter').value.trim().toLowerCase();
+  const shown = files.filter(f => f.toLowerCase().includes(q));
+  $('count').textContent = folder ? `${shown.length} / ${files.length} 件` : '';
+  const list = $('list'); list.textContent = '';
+  let lastDir = null;
+  for (const rel of shown) {
+    const i = rel.lastIndexOf('/');
+    const dirName = i < 0 ? '' : rel.slice(0, i);
+    if (!q && dirName !== lastDir && (dirName || lastDir !== null)) {
+      const h = document.createElement('div'); h.className = 'dirhead';
+      h.textContent = '📁 ' + (dirName || '（このフォルダー直下）');
+      list.appendChild(h);
+    }
+    lastDir = dirName;
+    const div = document.createElement('div');
+    div.className = 'item' + (current === folder + '\\' + rel.replace(/\//g, '\\') ? ' sel' : '');
+    div.dataset.rel = rel;
+    const name = document.createElement('span'); name.className = 'name';
+    name.textContent = i < 0 ? rel : rel.slice(i + 1);
+    div.appendChild(name);
+    if (i >= 0 && q) {
+      const dir = document.createElement('span'); dir.className = 'dir';
+      dir.textContent = rel.slice(0, i); div.appendChild(dir);
+    }
+    div.onclick = () => openFile(folder + '\\' + rel.replace(/\//g, '\\'));
+    list.appendChild(div);
+  }
+}
+
+async function loadFolder(path, keepFile) {
+  const r = await api.list_files(path);
+  if (r.error) { showMsg(r.error); return; }
+  showMsg('');
+  folder = path; files = r.files;
+  $('folder').textContent = path;
+  $('filter').value = '';
+  renderList();
+  showEmpty();
+}
+
+let mermaidReady = null, diagramSeq = 0;
+function loadMermaid() {
+  if (!mermaidReady) mermaidReady = api.get_mermaid().then(src => {
+    const s = document.createElement('script'); s.textContent = src;
+    document.head.appendChild(s);
+    window.mermaid.initialize({
+      startOnLoad: false, securityLevel: 'strict',
+      theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default' });
+    return window.mermaid;
+  });
+  return mermaidReady;
+}
+
+async function renderDiagrams(path) {
+  const blocks = [...document.querySelectorAll('#content pre.mermaid-src')];
+  if (!blocks.length) return;
+  let mermaid;
+  try { mermaid = await loadMermaid(); }
+  catch (e) { mermaidReady = null; showMsg('図の描画部品を読み込めませんでした: ' + e); return; }
+  for (const pre of blocks) {
+    if (current !== path) return;               // 別の文書へ移ったら打ち切る
+    const code = pre.textContent, id = 'mmd' + (++diagramSeq);
+    try {
+      const { svg } = await mermaid.render(id, code);
+      const div = document.createElement('div'); div.className = 'diagram'; div.dataset.src = code;
+      div.innerHTML = svg; pre.replaceWith(div);
+    } catch (e) {
+      document.getElementById('d' + id)?.remove();   // 失敗時に残る作業用の要素
+      const box = document.createElement('div'); box.className = 'diagram-error';
+      const p = document.createElement('p');
+      p.textContent = '図を描けませんでした: ' + String(e.message || e).split('\n')[0];
+      box.appendChild(p); pre.replaceWith(box); box.appendChild(pre);
+      pre.style.display = 'block';
+    }
+  }
+}
+
+// ---- 印刷・PDF
+// 暗い配色の図は紙では読めないので、ダイアログが開いている間だけ明るい配色で描き直す
+async function printBeforeDiagrams() {
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const nodes = [...document.querySelectorAll('#content .diagram[data-src]')];
+  if (!dark || !nodes.length || !window.mermaid) return null;
+  const redraw = async theme => {
+    window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme });
+    for (const d of nodes) {
+      try { const { svg } = await window.mermaid.render('mmd' + (++diagramSeq), d.dataset.src); d.innerHTML = svg; } catch (e) { /* そのまま */ }
+    }
+  };
+  await redraw('default');
+  return () => redraw('dark');
+}
+const fileName = () => current ? current.substring(current.lastIndexOf('\\') + 1) : '';
+function openPrint() { MdPrint.open(); }
+
+async function openFile(path) {
+  const r = await api.open_file(path);
+  if (r.error) { showMsg(r.error); return; }
+  showMsg('');
+  current = r.path;
+  $('content').innerHTML = r.html;
+  $('title').textContent = r.path;
+  $('scroll').scrollTop = 0;
+  $('scroll').scrollLeft = 0;
+  renderList();
+  const sel = document.querySelector('.item.sel');
+  if (sel) sel.scrollIntoView({ block: 'nearest' });
+  if (fitMode) fitWidth();
+  await renderDiagrams(r.path);
+  if (fitMode) fitWidth();           // 図が出来て幅が変わるので、もう一度合わせる
+}
+
+async function chooseFolder() {
+  const p = await api.pick_folder(folder);
+  if (p) await loadFolder(p, false);
+  return p;
+}
+
+async function chooseFile() {
+  const p = await api.pick_file(folder);
+  if (!p) return;
+  const dir = p.substring(0, p.lastIndexOf('\\'));
+  if (dir !== folder) await loadFolder(dir, true);
+  await openFile(p);
+}
+
+async function reload() {
+  if (!folder && !current) return;
+  if (folder) await loadFolder(folder, true);
+  if (current) await openFile(current);
+}
+
+$('content').addEventListener('click', async e => {
+  const a = e.target.closest('a'); if (!a) return;
+  const href = a.getAttribute('href') || '';
+  e.preventDefault();
+  if (href.startsWith('#')) {
+    const t = document.getElementById(decodeURIComponent(href.slice(1)));
+    if (t) t.scrollIntoView();
+  } else if (/^(https?:|mailto:)/i.test(href)) {
+    api.open_external(href);
+  } else if (current) {
+    const p = await api.resolve_link(current, href);
+    if (p) await openFile(p);
+  }
+});
+
+$('btnFolder').onclick = chooseFolder;
+$('btnFile').onclick = chooseFile;
+$('btnReload').onclick = reload;
+$('btnPrint').onclick = openPrint;
+$('btnSide').onclick = toggleSide;
+$('filter').oninput = renderList;
+document.addEventListener('keydown', e => {
+  if (MdPrint.isOpen()) return;
+  if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); openPrint(); return; }
+  if (e.ctrlKey && !e.shiftKey && (e.key === '+' || e.key === '=' || e.key === ';')) { e.preventDefault(); zoomBy(1.1); return; }
+  if (e.ctrlKey && (e.key === '-' || e.key === '_')) { e.preventDefault(); zoomBy(1 / 1.1); return; }
+  if (e.ctrlKey && e.key === '0') { e.preventDefault(); setZoom(1, false); return; }
+  if (e.ctrlKey && e.key === '9') { e.preventDefault(); fitWidth(); return; }
+  if (e.key === 'F5') { e.preventDefault(); reload(); }
+  else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'o') { e.preventDefault(); chooseFile(); }
+  else if (e.ctrlKey && e.key.toLowerCase() === 'o') { e.preventDefault(); chooseFolder(); }
+  else if (e.ctrlKey && e.key.toLowerCase() === 'b') { e.preventDefault(); toggleSide(); }
+});
+
+// --- 表示倍率 -------------------------------------------------------------
+let zoom = 1, fitMode = false;
+const Z_MIN = 0.1, Z_MAX = 5;
+
+function setZoom(z, fit) {
+  zoom = Math.min(Z_MAX, Math.max(Z_MIN, z));
+  fitMode = !!fit;
+  $('content').style.zoom = zoom;
+  $('zVal').value = Math.round(zoom * 100);
+  $('zFit').classList.toggle('active', fitMode);
+}
+
+const overflowing = () => $('scroll').scrollWidth > $('scroll').clientWidth + 1;
+
+function fitWidth() {                      // 横スクロールが要らない最大の倍率を探す
+  setZoom(1, true);
+  if (!overflowing()) return;
+  let lo = Z_MIN, hi = 1;
+  for (let i = 0; i < 9; i++) {
+    const mid = (lo + hi) / 2;
+    $('content').style.zoom = mid;
+    if (overflowing()) hi = mid; else lo = mid;
+  }
+  setZoom(lo, true);
+}
+
+const zoomBy = f => setZoom(Math.round(zoom * f * 100) / 100, false);
+$('zOut').onclick = () => zoomBy(1 / 1.1);
+$('zIn').onclick = () => zoomBy(1.1);
+$('z100').onclick = () => setZoom(1, false);
+$('zFit').onclick = fitWidth;
+$('zVal').onchange = () => {
+  const v = parseFloat($('zVal').value);
+  setZoom(isFinite(v) ? v / 100 : zoom, false);
+};
+$('scroll').addEventListener('wheel', e => {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+  zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1);
+}, { passive: false });
+let resizeTimer = null;
+window.addEventListener('resize', () => {  // 全体表示のまま窓を広げ縮めしたら追従する
+  if (!fitMode) return;
+  clearTimeout(resizeTimer); resizeTimer = setTimeout(fitWidth, 120);
+});
+
+let lastSync = 0;
+async function syncList() {
+  if (!api || !folder || Date.now() - lastSync < 1000) return;
+  lastSync = Date.now();
+  const r = await api.list_files(folder);
+  if (r.error) { showMsg(r.error); return; }
+  showMsg('');
+  if (JSON.stringify(r.files) !== JSON.stringify(files)) { files = r.files; renderList(); }
+}
+window.addEventListener('focus', syncList);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncList(); });
+
+window.addEventListener('pywebviewready', async () => {
+  api = window.pywebview.api;
+  await MdPrint.init({
+    api, content: () => $('content'), name: fileName, path: () => current, hasDocument: () => !!current,
+    beforePrint: printBeforeDiagrams,
+    notify: t => { showMsg(t); setTimeout(() => showMsg(''), 4000); },
+  });
+  const init = await api.get_initial();
+  if (init.error) showMsg(init.error);
+  if (init.folder) await loadFolder(init.folder, !!init.file);
+  if (init.file) { await openFile(init.file); return; }
+  showEmpty();
+  if (!init.folder && !init.error) await chooseFolder();   // 引数なし: 最初にフォルダーを尋ねる
+});
+</script>
+</body>
+</html>

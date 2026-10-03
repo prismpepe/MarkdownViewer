@@ -1,0 +1,4 @@
+pywebview
+markdown-it-py
+mdit-py-plugins
+pyinstaller

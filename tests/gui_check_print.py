@@ -1,0 +1,163 @@
+"""印刷・PDF 出力を、実際の画面で確かめる（ビューア用）。
+
+    .venv\\Scripts\\python tests\\gui_check_print.py
+
+設定の置き場所は一時フォルダーへ向ける（利用者の設定を書き換えない）。PDF も一時フォルダーへ作る。
+プリンターへは実際には送らない（存在しないプリンター名で、失敗の扱いだけ確かめる）。
+"""
+import json
+import os
+import re
+import sys
+import tempfile
+import threading
+import time
+
+sys.path.insert(0, '.')
+os.environ['APPDATA'] = tempfile.mkdtemp(prefix='md_appdata_')
+import webview
+import mdviewer
+import printing
+
+tmp = tempfile.mkdtemp()
+long_md = os.path.join(tmp, 'long.md')
+body = ["# 長い文書", ""]
+for i in range(70):
+    body += [f"## 見出し{i}", "", f"本文の段落 {i}。" + "文章が続きます。" * 12, ""]
+open(long_md, 'w', encoding='utf-8', newline='\n').write("\n".join(body))
+
+short_md = os.path.join(tmp, 'short.md')
+open(short_md, 'w', encoding='utf-8').write("# 短い\n\n一行だけ。\n")
+
+cols = 14
+rows = ["| " + " | ".join(f"項目{c}の見出し" for c in range(cols)) + " |", "|" + "---|" * cols]
+for r in range(10):
+    rows.append("| " + " | ".join(f"ABCDEFGH{10000 + r * cols + c}" for c in range(cols)) + " |")
+wide_md = os.path.join(tmp, 'wide.md')
+open(wide_md, 'w', encoding='utf-8').write("# 幅広の表\n\n" + "\n".join(rows) + "\n")
+
+api = mdviewer.Api(long_md)
+w = webview.create_window('t', html=open('ui.html', encoding='utf-8').read().replace(
+    '/*PRINT_JS*/', open('print.js', encoding='utf-8').read()), js_api=api, width=1300, height=800, x=20, y=20)
+api._window = w
+results = []
+
+
+def js(code):
+    return w.evaluate_js(code)
+
+
+def check(name, got, want):
+    ok = got == want
+    results.append(ok)
+    print(('OK ' if ok else 'NG ') + name + ('' if ok else f'\n    実際: {got!r}\n    期待: {want!r}'), flush=True)
+
+
+BASE = dict(paper='A4', landscape=False, margin='標準', scale=1.0, backgrounds=True, header_footer=True,
+            title='long.md', uri=long_md, printer='', copies=1, mono=False)
+
+
+def pages(**kw):
+    r = api.print_count({**BASE, **kw})
+    return r['pages'] if r['ok'] else r
+
+
+def pdf(ranges, **kw):
+    path = os.path.join(tmp, f"out_{len(os.listdir(tmp))}.pdf")
+    r = api.print_save_pdf({**BASE, **kw}, ranges, path)
+    if not r['ok']:
+        return r
+    data = open(path, 'rb').read()
+    media = re.search(rb'/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)', data)
+    return {'pages': printing.count_pdf_pages(data), 'head': data[:5],
+            'size': (float(media.group(1)), float(media.group(2))) if media else None}
+
+
+def open_doc(path):
+    js(f"openFile({json.dumps(path)})")
+    time.sleep(2.5)
+
+
+def drive():
+    time.sleep(8)
+    n = pages()
+    check("長い文書は複数ページになる", isinstance(n, int) and n >= 5, True)
+    print("    A4 縦の全ページ数:", n, flush=True)
+    check("A3 のほうがページ数は少ない", pages(paper='A3') < n, True)
+    check("横向きのほうがページ数は多い", pages(landscape=True) > n, True)
+    check("倍率を下げるとページ数が減る", pages(scale=0.5) < n, True)
+
+    full = pdf('')
+    check("全ページの PDF（先頭が %PDF）", (full['head'], full['pages']), (b'%PDF-', n))
+    check("A4 縦の用紙サイズ", tuple(round(v) for v in full['size']), (595, 842))
+    check("ページ指定 2 → 1ページ", pdf('2')['pages'], 1)
+    check("ページ指定 1-3 → 3ページ", pdf('1-3')['pages'], 3)
+    check("ページ指定 1-2,4 → 3ページ", pdf('1-2,4')['pages'], 3)
+    land = pdf('1', landscape=True)
+    check("横向きの用紙サイズ（幅 > 高さ）", land['size'][0] > land['size'][1], True)
+    check("A3 の用紙サイズ", tuple(round(v) for v in pdf('1', paper='A3')['size']), (842, 1191))
+
+    # 画面の部品（ツールバー・一覧）は紙に出ない: 短い文書は1ページ
+    open_doc(short_md)
+    check("短い文書は1ページ（画面の部品は紙に出ない）", pages(), 1)
+
+    # 印刷ダイアログ
+    open_doc(wide_md)
+    js("openPrint()")
+    time.sleep(3)
+    check("印刷ダイアログが開く", js("document.getElementById('pveil').classList.contains('show')"), True)
+    js("var f=document.getElementById('pFit'); f.checked=false; f.dispatchEvent(new Event('change'))")
+    off = js("MdPrint.currentOptions().scale")
+    js("var f=document.getElementById('pFit'); f.checked=true; f.dispatchEvent(new Event('change'))")
+    on = js("MdPrint.currentOptions().scale")
+    print("    幅広の表: 縮小なしの倍率 =", off, " 縮小ありの倍率 =", on, flush=True)
+    check("縮小しない設定では、倍率は指定どおり（100%）", off, 1.0)
+    check("幅の広い表は、縮小する設定にすると倍率が下がる", 0.2 <= on < 1.0, True)
+    js("var s=document.getElementById('pPaper'); s.value='A3'; s.dispatchEvent(new Event('change'))")
+    check("用紙が大きいほど、縮小は小さくて済む", js("MdPrint.currentOptions().scale") >= on, True)
+    js("var s=document.getElementById('pPaper'); s.value='A4'; s.dispatchEvent(new Event('change'))")
+    js("document.querySelector('input[name=pOri][value=l]').click()")
+    check("横向きは幅が広いので、縮小は小さくて済む", js("MdPrint.currentOptions().scale") >= on, True)
+    js("document.querySelector('input[name=pOri][value=p]').click()")
+    check("ヘッダーに文書名が入る設定", js("MdPrint.currentOptions().title"), 'wide.md')
+
+    js("document.querySelector('input[name=pRange][value=some]').click()")
+    js("var e=document.getElementById('pRanges'); e.value='5-1'; e.dispatchEvent(new Event('input'))")
+    time.sleep(1)
+    check("逆順の指定は誤りと表示される", js("document.getElementById('pRanges').classList.contains('bad')"), True)
+    js("var e=document.getElementById('pRanges'); e.value='1'; e.dispatchEvent(new Event('input'))")
+    time.sleep(1.5)
+    check("正しい指定は受け付けられる", (js("document.getElementById('pRanges').classList.contains('bad')"),
+                                      js("document.getElementById('pRangeInfo').textContent")), (False, '1 ページを出力します'))
+    js("var e=document.getElementById('pRanges'); e.value='9'; e.dispatchEvent(new Event('input'))")
+    time.sleep(1)
+    check("全ページ数を超える指定は誤りと表示される", js("document.getElementById('pRanges').classList.contains('bad')"), True)
+    js("document.querySelector('input[name=pRange][value=all]').click()")
+    check("「すべて」に戻すと指定欄は無効になる", js("document.getElementById('pRanges').disabled"), True)
+    js("document.querySelector('input[name=pMode][value=pdf]').click()")
+    check("PDF 保存を選ぶとプリンター欄が隠れ、ボタンが変わる",
+          (js("document.getElementById('pPrintOnly').style.display"), js("document.getElementById('pRun').textContent")), ('none', 'PDF を保存…'))
+    js("document.querySelector('input[name=pMode][value=print]').click()")
+    js("document.getElementById('pClose').click()")
+    time.sleep(.5)
+    check("閉じられる", js("document.getElementById('pveil').classList.contains('show')"), False)
+    check("設定が保存される（次回の初期値になる）", mdviewer.load_settings().get('print', {}).get('paper'), 'A4')
+
+    # 文書が開いていないとき
+    js("current = null")
+    js("openPrint()")
+    time.sleep(.5)
+    check("文書がなければダイアログは開かず、案内を出す",
+          (js("document.getElementById('pveil').classList.contains('show')"), js("document.getElementById('msg').hidden")), (False, False))
+
+    bad = api.print_send({**BASE, 'printer': '存在しないプリンター'}, '')
+    check("存在しないプリンターは失敗として返る（落ちない）", bad['ok'], False)
+
+    saved = mdviewer.load_settings().get("print", {})
+    check("ページ範囲は保存されない（次回は「すべて」から始まる）", ("ranges" in saved, "rangeAll" in saved), (False, False))
+    print("RESULT", sum(results), "/", len(results), flush=True)
+    os._exit(0)
+
+
+threading.Thread(target=drive, daemon=True).start()
+webview.start()
