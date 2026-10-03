@@ -10,10 +10,12 @@ Python 側で HTML にして画面へ渡す。文書に埋め込まれた HTML �
 許可したタグだけ残す（表などは表示し、スクリプトは動かさない）。
 """
 import base64
+import gzip
 import ctypes
 import json
 import mimetypes
 import os
+import re
 import sys
 import webbrowser
 
@@ -211,6 +213,25 @@ class Api:
         if os.path.isfile(path) and is_markdown(path):
             return path
         return None
+
+    # --- Mermaid の追加アイコン（Architecture Diagram の `logos:slack-icon` など）---------
+    def list_icon_packs(self):
+        folder = resource_path(os.path.join("vendor", "icons"))
+        try:
+            return sorted(n[:-8] for n in os.listdir(folder) if n.endswith(".json.gz"))
+        except OSError:
+            return []
+
+    def get_icon_pack(self, name):
+        """アイコン集（iconify の JSON）を返す。図でそのアイコンが要るときだけ画面が取りに来る。"""
+        if not re.fullmatch(r"[a-z0-9-]+", name or ""):
+            return None
+        path = os.path.join(resource_path(os.path.join("vendor", "icons")), name + ".json.gz")
+        try:
+            with gzip.open(path, "rt", encoding="utf-8") as f:
+                return f.read()
+        except OSError:
+            return None
 
     def get_mermaid(self):
         """Mermaid 本体。図があるときだけ画面が取りに来る（3.5MB あるため）。"""
