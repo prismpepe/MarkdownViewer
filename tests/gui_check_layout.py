@@ -80,6 +80,13 @@ def drive():
     js(f"openFile({json.dumps(os.path.join(folder_b, 'b.md'))})")
     check("閉じたあとも、別の文書を開ける", wait("document.querySelector('#content h1') && document.querySelector('#content h1').textContent === 'Bの文書'"), True)
 
+    # ---- 一覧が、時間か件数の上限で途中までのときの表示
+    js("listTruncated = true; renderList()")
+    check("一覧が途中までのとき、件数の行で知らせる", '途中までです' in js("document.getElementById('count').textContent"), True)
+    check("途中までの知らせは、色でも目立たせる", js("document.getElementById('count').style.color") != '', True)
+    js("listTruncated = false; renderList()")
+    check("途中でなければ、知らせは出ない", '途中' in js("document.getElementById('count').textContent"), False)
+
     # ---- ツールバーの折り返し
     def toolbar():
         return js("""(() => {

@@ -215,7 +215,9 @@ function showMsg(t) { const m = $('msg'); m.textContent = t || ''; m.hidden = !t
 function renderList() {
   const q = $('filter').value.trim().toLowerCase();
   const shown = files.filter(f => f.toLowerCase().includes(q));
-  $('count').textContent = folder ? `${shown.length} / ${files.length} 件` : '';
+  $('count').textContent = folder ? `${shown.length} / ${files.length} 件${listTruncated ? '（途中までです）' : ''}` : '';
+  $('count').style.color = listTruncated ? '#cf222e' : '';
+  $('count').title = listTruncated ? '大きなフォルダーなので、一覧は途中までです。もっと下のフォルダーを選ぶと、全部を出せます' : '';
   const list = $('list'); list.textContent = '';
   let lastDir = null;
   for (const rel of shown) {
@@ -242,11 +244,13 @@ function renderList() {
   }
 }
 
+let listTruncated = false;      // 一覧が、時間か件数の上限で途中までのとき true
 async function loadFolder(path, keepFile) {
+  $('count').textContent = '一覧を読み込んでいます…'; $('count').style.color = '';
   const r = await api.list_files(path);
   if (r.error) { showMsg(r.error); return; }
   showMsg('');
-  folder = path; files = r.files;
+  folder = path; files = r.files; listTruncated = !!r.truncated;
   $('folder').textContent = path;
   $('filter').value = '';
   renderList();
@@ -737,11 +741,12 @@ window.addEventListener('resize', () => {  // 全体表示のまま窓を広げ�
 
 let lastSync = 0;
 async function syncList() {
-  if (!api || !folder || Date.now() - lastSync < 1000) return;
+  if (!api || !folder || listTruncated || Date.now() - lastSync < 1000) return;   // 途中までの一覧は、前面に戻るたびに読み直さない（毎回、上限の時間がかかるため）
   lastSync = Date.now();
   const r = await api.list_files(folder);
   if (r.error) { showMsg(r.error); return; }
   showMsg('');
+  listTruncated = !!r.truncated;
   if (JSON.stringify(r.files) !== JSON.stringify(files)) { files = r.files; renderList(); }
 }
 window.addEventListener('focus', syncList);

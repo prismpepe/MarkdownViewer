@@ -17,20 +17,23 @@ import mimetypes
 import os
 import re
 import sys
+import time
 import webbrowser
 
 import cjk_emphasis
 import dialogs
 import printing
+import shellreg
 import uiprefs
 from sanitize import sanitize
 
 MD_EXTENSIONS = (".md", ".markdown", ".mdown", ".mkd")
-APP_VERSION = "1.3.2"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
+APP_VERSION = "1.4.0"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
 APP_TITLE = f"Markdown ビューア v{APP_VERSION}"
 PROG_ID = "MarkdownViewer.File"
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv"}
 MAX_FILES = 5000
+SCAN_SECONDS = 10          # 一覧の読み込みに使う時間の上限（秒）
 MAX_INLINE_IMAGE = 20 * 1024 * 1024
 DATA_EXTENSIONS = (".csv", ".tsv", ".json")   # Vega-Lite の data.url で読めるローカルファイル
 MAX_DATA_FILE = 20 * 1024 * 1024
@@ -85,9 +88,14 @@ def is_markdown(path):
     return path.lower().endswith(MD_EXTENSIONS)
 
 
-def list_markdown(folder):
-    """フォルダー以下の Markdown を相対パスで返す（サブフォルダーも含む）。"""
+def scan_markdown(folder, max_seconds=SCAN_SECONDS):
+    """フォルダー以下の Markdown を相対パスで返す（サブフォルダーも含む）。(一覧, 途中で打ち切ったか)
+
+    ドライブ全体やホームのような巨大なフォルダーを開いても、長く待たされないよう、件数（MAX_FILES）か
+    時間（max_seconds）の上限に達したら、そこまでの一覧を返す。
+    """
     found = []
+    deadline = time.monotonic() + max_seconds
     for root, dirs, files in os.walk(folder):
         dirs[:] = sorted(d for d in dirs
                          if d not in SKIP_DIRS and not d.startswith("."))
@@ -96,8 +104,15 @@ def list_markdown(folder):
                 rel = os.path.relpath(os.path.join(root, name), folder)
                 found.append(rel.replace("\\", "/"))
                 if len(found) >= MAX_FILES:
-                    return found
-    return found
+                    return found, True
+        if time.monotonic() >= deadline:
+            return found, True
+    return found, False
+
+
+def list_markdown(folder):
+    """フォルダー以下の Markdown を相対パスで返す（上限の扱いは scan_markdown と同じ）。"""
+    return scan_markdown(folder)[0]
 
 
 from markdown_it.common.utils import escapeHtml
@@ -224,8 +239,8 @@ class Api:
             if settings.get("last_folder") != folder:
                 settings["last_folder"] = folder
                 save_settings(settings)
-        return {"error": None, "files": list_markdown(folder),
-                "truncated": False}
+        files, truncated = scan_markdown(folder)
+        return {"error": None, "files": files, "truncated": truncated}
 
     def open_file(self, path):
         try:
@@ -460,59 +475,30 @@ def message(text, title="Markdown ビューア"):
     ctypes.windll.user32.MessageBoxW(0, text, title, 0x40)
 
 
+VERB = "MarkdownViewer"                    # フォルダーの右クリックのメニューのキー名（ほかのアプリと別にする）
+MENU_TEXT = "Markdown ビューアで開く"
+
+
 def register_association():
-    import winreg
     if not getattr(sys, "frozen", False):
         message("exe 版から実行してください。")
         return
-    exe = sys.executable
-    base = r"Software\Classes"
-
-    def put(key, value, name=""):
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key) as k:
-            winreg.SetValueEx(k, name, 0, winreg.REG_SZ, value)
-
-    put(rf"{base}\{PROG_ID}", "Markdown 文書")
-    put(rf"{base}\{PROG_ID}\DefaultIcon", f'"{exe}",0')
-    put(rf"{base}\{PROG_ID}\shell\open", "Markdown ビューアで開く")
-    put(rf"{base}\{PROG_ID}\shell\open\command", f'"{exe}" "%1"')
-    for ext in (".md", ".markdown"):
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER,
-                              rf"{base}\{ext}\OpenWithProgids") as k:
-            winreg.SetValueEx(k, PROG_ID, 0, winreg.REG_NONE, b"")
-    ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)
-    message("登録しました。\n\nMarkdown ファイルを右クリック →「プログラムから開く」→"
-            "「別のプログラムを選択」で「Markdown ビューアで開く」を選び、"
-            "「常に使う」を押すと、ダブルクリックで開けます。")
+    shellreg.register(sys.executable, PROG_ID, MENU_TEXT, VERB)
+    shellreg.notify_shell()
+    message("登録しました。\n\n"
+            "■ Markdown ファイル\n"
+            "右クリック →「プログラムから開く」→「別のプログラムを選択」で「Markdown ビューアで開く」を選び、"
+            "「常に使う」を押すと、ダブルクリックで開けます。\n\n"
+            "■ フォルダー\n"
+            "フォルダーを右クリックすると、「Markdown ビューアで開く」が出ます。フォルダーを開いて、"
+            "何もない場所を右クリックしても出ます。\n"
+            "Windows 11 では、右クリックしてすぐ出るメニューではなく、「その他のオプションを表示」を押した先に出ます"
+            "（Shift キーを押しながら右クリックしても出ます）。")
 
 
 def unregister_association():
-    import winreg
-
-    def delete_tree(root, sub):
-        try:
-            with winreg.OpenKey(root, sub, 0, winreg.KEY_ALL_ACCESS) as k:
-                while True:
-                    try:
-                        child = winreg.EnumKey(k, 0)
-                    except OSError:
-                        break
-                    delete_tree(root, rf"{sub}\{child}")
-            winreg.DeleteKey(root, sub)
-        except OSError:
-            pass
-
-    base = r"Software\Classes"
-    delete_tree(winreg.HKEY_CURRENT_USER, rf"{base}\{PROG_ID}")
-    for ext in (".md", ".markdown"):
-        try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                                rf"{base}\{ext}\OpenWithProgids", 0,
-                                winreg.KEY_SET_VALUE) as k:
-                winreg.DeleteValue(k, PROG_ID)
-        except OSError:
-            pass
-    ctypes.windll.shell32.SHChangeNotify(0x08000000, 0, None, None)
+    shellreg.unregister(PROG_ID, VERB)
+    shellreg.notify_shell()
     message("登録を解除しました。")
 
 
@@ -593,7 +579,7 @@ def main():
         return
 
     import webview
-    start = os.path.abspath(args[0]) if args else None
+    start = os.path.abspath(shellreg.clean_path_arg(args[0])) if args else None
     api = Api(start)
     with open(resource_path("ui.html"), encoding="utf-8") as f:
         html = f.read()
