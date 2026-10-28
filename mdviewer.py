@@ -19,13 +19,14 @@ import re
 import sys
 import webbrowser
 
+import cjk_emphasis
 import dialogs
 import printing
 import uiprefs
 from sanitize import sanitize
 
 MD_EXTENSIONS = (".md", ".markdown", ".mdown", ".mkd")
-APP_VERSION = "1.3.0"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
+APP_VERSION = "1.3.1"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
 APP_TITLE = f"Markdown ビューア v{APP_VERSION}"
 PROG_ID = "MarkdownViewer.File"
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv"}
@@ -108,6 +109,7 @@ def make_renderer():
     from mdit_py_plugins.tasklists import tasklists_plugin
 
     md = MarkdownIt("commonmark", {"html": True})
+    cjk_emphasis.apply(md)       # 日本語の文で、記号に接した ** が強調になるようにする
     md.enable(["table", "strikethrough"])
     md.use(tasklists_plugin)
     md.use(anchors_plugin, min_level=1, max_level=6)
