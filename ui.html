@@ -3,11 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Markdown ビューア</title>
+<title>Markdown ビューア v__APP_VERSION__</title>
 <style>
 :root {
   --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --side: #f6f8fa;
   --border: #d0d7de; --accent: #0969da; --sel: #ddf4ff; --code: #f3f4f6;
+  /* 表示フォント（フォントの設定で変わる。--head-font は設定したときだけ入る） */
+  --ui-font: "Yu Gothic UI", "Segoe UI", sans-serif;
+  --body-font: "Yu Gothic UI", "Segoe UI", sans-serif; --body-size: 14px;
+  --code-font: Consolas, "Cascadia Mono", monospace; --code-size: 13px;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -18,7 +22,7 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body { display: flex; flex-direction: column; background: var(--bg); color: var(--fg);
-  font: 14px/1.5 "Yu Gothic UI", "Segoe UI", sans-serif; }
+  font: 14px/1.5 var(--ui-font); }
 #body { flex: 1; min-height: 0; display: flex; }
 #side { width: 320px; min-width: 200px; background: var(--side);
   border-right: 1px solid var(--border); display: flex; flex-direction: column; }
@@ -55,16 +59,22 @@ button:hover { border-color: var(--accent); }
   display: flex; gap: 8px; align-items: center; }
 #title { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #scroll { flex: 1; overflow: auto; }
-#content { padding: 24px 32px 64px; transform-origin: top left; }
+#content { padding: 24px 32px 64px; transform-origin: top left;
+  font-family: var(--body-font); font-size: var(--body-size); }
 #empty { color: var(--muted); text-align: center; margin-top: 20vh; }
 #empty button { margin-top: 12px; padding: 8px 18px; }
 #msg { color: #cf222e; padding: 8px 12px; }
 
 #content h1, #content h2 { border-bottom: 1px solid var(--border); padding-bottom: .3em; }
 #content h1, #content h2, #content h3, #content h4 { margin: 1.4em 0 .6em; line-height: 1.25; }
+#content h1, #content h2, #content h3, #content h4, #content h5, #content h6 { font-family: var(--head-font, inherit); }
+#content h1 { font-size: var(--h1-size, 2em); }
+#content h2 { font-size: var(--h2-size, 1.5em); }
+#content h3 { font-size: var(--h3-size, 1.17em); }
+#content h4 { font-size: var(--h4-size, 1em); }
 #content a { color: var(--accent); }
 #content code { background: var(--code); padding: .15em .4em; border-radius: 4px;
-  font: 13px Consolas, "Cascadia Mono", monospace; }
+  font: var(--code-size) var(--code-font); }
 #content pre { background: var(--code); padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
 #content pre code { padding: 0; background: none; }
 #content blockquote { margin: 0; padding: 0 1em; color: var(--muted);
@@ -75,8 +85,37 @@ button:hover { border-color: var(--accent); }
 #content pre.mermaid-src { background: none; padding: 0; }
 #content .diagram { text-align: center; overflow-x: auto; margin: 1em 0; }
 #content .diagram svg { max-width: 100%; height: auto; }
+#content .diagram.vega { background: #fff; border-radius: 6px; padding: 8px 0; }
 #content .diagram-error { border: 1px solid #cf222e; border-radius: 6px; padding: 8px 12px; margin: 1em 0; }
 #content .diagram-error p { margin: 0 0 6px; color: #cf222e; }
+
+/* フォントの設定ダイアログ */
+#fveil { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
+#fveil[hidden] { display: none; }
+#fdlg { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; width: fit-content; max-width: 94vw; max-height: 90vh; overflow: auto; font: 14px/1.5 "Yu Gothic UI", "Segoe UI", sans-serif; }
+#fdlg h3 { margin: 0 0 6px; }
+#fdlg .hint { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+#fdlg .hint { max-width: 520px; }
+#ftable { border-collapse: collapse; width: auto; }
+#ftable th { text-align: left; padding: 6px 12px 6px 0; white-space: nowrap; font-weight: 600; }
+#ftable td { padding: 4px 8px 4px 0; vertical-align: middle; white-space: nowrap; }
+#ftable td button { padding: 4px 8px; font-size: 12px; }
+#ftable input[type=text] { padding: 5px 8px; font: inherit; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+#ftable input[list] { width: 150px; margin-right: 6px; }
+.numbox { display: inline-flex; align-items: stretch; margin: 0 2px; vertical-align: middle; }
+.numbox input { width: 46px; text-align: right; border-top-right-radius: 0; border-bottom-right-radius: 0; margin: 0; }
+.numbox .arrows { display: flex; flex-direction: column; width: 18px; }
+/* 「#ftable td button」より優先させる（余白と文字の大きさで、入力欄より背が高くならないように） */
+#ftable .numbox .arrows button { flex: 1 1 0; min-height: 0; height: 0; padding: 0; margin: 0; font-size: 8px; line-height: 1;
+  border-radius: 0; border-left: 0; overflow: hidden; }
+#ftable .numbox .arrows button:first-child { border-top-right-radius: 6px; }
+#ftable .numbox .arrows button:last-child { border-bottom-right-radius: 6px; border-top: 0; }
+@media (max-width: 640px) { #ftable td:last-child:not([colspan]) { display: none; } }
+#fdlg .row { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+#fdlg .grow { flex: 1; }
+#fdlg button.primary { background: var(--accent); border-color: var(--accent); color: #fff; padding: 6px 18px; }
 #content img { max-width: 100%; }
 #content hr { border: 0; border-top: 1px solid var(--border); }
 #content li.task-list-item { list-style: none; margin-left: -1.4em; }
@@ -86,7 +125,7 @@ button:hover { border-color: var(--accent); }
   :root { --bg: #fff; --fg: #000; --muted: #444; --side: #f2f2f2; --border: #999; --accent: #0645ad; --code: #f2f2f2; }
   html, body { height: auto !important; overflow: visible !important; display: block !important;
     background: #fff !important; color: #000 !important; }
-  #toolbar, #msg, #side, #top, #pveil { display: none !important; }
+  #toolbar, #msg, #side, #top, #pveil, #fveil { display: none !important; }
   #body, #main, #scroll { display: block !important; overflow: visible !important; height: auto !important;
     width: auto !important; flex: none !important; min-height: 0 !important; }
   #content { zoom: 1 !important; padding: 0 !important; }
@@ -107,6 +146,7 @@ button:hover { border-color: var(--accent); }
   <button id="btnReload" title="F5">↻ 更新</button>
   <span class="sep"></span>
   <button id="btnPrint" title="Ctrl+P">🖨 印刷／PDF</button>
+  <button id="btnFont" title="表示フォントの名前・大きさを設定する">🔤 フォント</button>
   <span class="sep"></span>
   <span id="zoombox">
     <span>表示倍率</span>
@@ -133,6 +173,15 @@ button:hover { border-color: var(--accent); }
   </div>
 </div>
 </div>
+<div id="fveil" hidden>
+  <div id="fdlg" role="dialog" aria-label="表示フォントの設定">
+    <h3>表示フォントの設定</h3>
+    <p class="hint">「画面」はボタン・一覧など、「図・グラフ」は Mermaid と Vega-Lite の文字です。フォント名は1つだけ設定します。入力欄を押すと候補が出て、文字を打つと絞り込まれます。各行の「既定」でその部分を既定に戻せます。変更はすぐ画面に反映され、次回の起動にも引き継がれます。</p>
+    <table id="ftable"></table>
+    <datalist id="fontlist"></datalist>
+    <div class="row"><button id="fReset">すべて既定に戻す</button><span class="grow"></span><button id="fClose" class="primary">閉じる</button></div>
+  </div>
+</div>
 <script>
 /*PRINT_JS*/
 </script>
@@ -143,12 +192,13 @@ const $ = id => document.getElementById(id);
 function toggleSide() {
   const h = $('side').classList.toggle('hidden');
   $('btnSide').textContent = h ? '☰ 一覧を表示' : '☰ 一覧を隠す';
+  savePrefsSoon();
 }
 
 function showEmpty() {
   if (current) return;
   const e = $('empty');
-  if (!folder) e.innerHTML = '<p><b>Markdown ビューア</b></p><p>上の「フォルダーを開く」で、読みたいファイルのあるフォルダーを選んでください。<br>一覧からファイルを選ぶと、ここに表示されます。</p><p>1つだけ読むときは「ファイルを開く」です。</p>';
+  if (!folder) e.innerHTML = '<p><b>Markdown ビューア</b> <span style="color:var(--muted)">v__APP_VERSION__</span></p><p>上の「フォルダーを開く」で、読みたいファイルのあるフォルダーを選んでください。<br>一覧からファイルを選ぶと、ここに表示されます。</p><p>1つだけ読むときは「ファイルを開く」です。</p>';
   else if (files.length) e.innerHTML = '<p>← 左の一覧から、読みたいファイルを選んでください。</p>';
   else e.innerHTML = '<p>このフォルダーには Markdown ファイルがありません。</p><p>別のフォルダーを選ぶには「フォルダーを開く」を押してください。</p>';
 }
@@ -201,9 +251,7 @@ function loadMermaid() {
   if (!mermaidReady) mermaidReady = api.get_mermaid().then(async src => {
     const s = document.createElement('script'); s.textContent = src;
     document.head.appendChild(s);
-    window.mermaid.initialize({
-      startOnLoad: false, securityLevel: 'strict',
-      theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default' });
+    window.mermaid.initialize(mermaidConfig());
     // Architecture Diagram の追加アイコン。同梱のアイコン集を、使われたときだけ読み込む
     const packs = await api.list_icon_packs();
     if (packs.length) window.mermaid.registerIconPacks(packs.map(name => ({ name, loader: () => api.get_icon_pack(name).then(t => JSON.parse(t)) })));
@@ -221,16 +269,71 @@ async function renderDiagrams(path) {
   for (const pre of blocks) {
     if (current !== path) return;               // 別の文書へ移ったら打ち切る
     const code = pre.textContent, id = 'mmd' + (++diagramSeq);
+    // 本文の中の本当の置き場所で描く。ガントは「親要素の幅」で全体の幅を決めるため、
+    // 画面外の作業用要素で描くとウィンドウ全幅で作られ、本文幅へ縮小されて文字が小さくなる
+    const div = document.createElement('div'); div.className = 'diagram'; div.dataset.src = code;
+    pre.replaceWith(div);
     try {
-      const { svg } = await mermaid.render(id, code);
-      const div = document.createElement('div'); div.className = 'diagram'; div.dataset.src = code;
-      div.innerHTML = svg; pre.replaceWith(div);
+      const { svg } = await mermaid.render(id, code, div);
+      div.innerHTML = svg;
     } catch (e) {
       document.getElementById('d' + id)?.remove();   // 失敗時に残る作業用の要素
       const box = document.createElement('div'); box.className = 'diagram-error';
       const p = document.createElement('p');
       p.textContent = '図を描けませんでした: ' + String(e.message || e).split('\n')[0];
-      box.appendChild(p); pre.replaceWith(box); box.appendChild(pre);
+      box.appendChild(p); div.replaceWith(box); box.appendChild(pre);
+      pre.style.display = 'block';
+    }
+  }
+}
+
+// ---- Vega-Lite
+let vegaReady = null;
+function loadVega() {
+  if (!vegaReady) vegaReady = (async () => {
+    for (const name of ['vega', 'vega-lite', 'vega-embed']) {   // この順に読み込む
+      const src = await api.get_vendor(name);
+      const s = document.createElement('script'); s.textContent = src;
+      document.head.appendChild(s);
+    }
+    return window.vegaEmbed;
+  })();
+  return vegaReady;
+}
+
+async function renderVega(path) {
+  const blocks = [...document.querySelectorAll('#content pre > code.language-vega-lite, #content pre > code.language-vegalite')]
+    .map(c => c.parentElement);
+  if (!blocks.length) return;
+  let embed;
+  try { embed = await loadVega(); }
+  catch (e) { vegaReady = null; showMsg('Vega-Lite の描画部品を読み込めませんでした: ' + e); return; }
+  // 文書内の spec による外部データ（data.url）の扱い:
+  //   http(s)  … ネットから取得
+  //   相対パス … 文書のフォルダーとその下の .csv/.tsv/.json だけ（Python 側で検査して読む）
+  //   それ以外 … 拒否
+  const loader = window.vega.loader();
+  const baseLoad = loader.load;
+  loader.load = async (uri, options) => {
+    const u = String(uri).trim();
+    if (/^https?:\/\//i.test(u)) return baseLoad.call(loader, u, options);
+    const r = await api.read_data(u);
+    if (r.error) throw new Error(r.error);
+    return r.text;
+  };
+  for (const pre of blocks) {
+    if (current !== path) return;
+    const text = pre.textContent;
+    const div = document.createElement('div'); div.className = 'diagram vega';
+    pre.replaceWith(div);
+    try {
+      const spec = JSON.parse(text);
+      await embed(div, spec, { renderer: 'svg', actions: false, loader, config: vegaConfig() });
+    } catch (e) {
+      const box = document.createElement('div'); box.className = 'diagram-error';
+      const p = document.createElement('p');
+      p.textContent = 'グラフを描けませんでした: ' + String(e.message || e).split('\n')[0];
+      box.appendChild(p); div.replaceWith(box); box.appendChild(pre);
       pre.style.display = 'block';
     }
   }
@@ -243,9 +346,9 @@ async function printBeforeDiagrams() {
   const nodes = [...document.querySelectorAll('#content .diagram[data-src]')];
   if (!dark || !nodes.length || !window.mermaid) return null;
   const redraw = async theme => {
-    window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme });
+    window.mermaid.initialize(mermaidConfig(theme));
     for (const d of nodes) {
-      try { const { svg } = await window.mermaid.render('mmd' + (++diagramSeq), d.dataset.src); d.innerHTML = svg; } catch (e) { /* そのまま */ }
+      try { const { svg } = await window.mermaid.render('mmd' + (++diagramSeq), d.dataset.src, d); d.innerHTML = svg; } catch (e) { /* そのまま */ }
     }
   };
   await redraw('default');
@@ -268,6 +371,7 @@ async function openFile(path) {
   if (sel) sel.scrollIntoView({ block: 'nearest' });
   if (fitMode) fitWidth();
   await renderDiagrams(r.path);
+  await renderVega(r.path);
   if (fitMode) fitWidth();           // 図が出来て幅が変わるので、もう一度合わせる
 }
 
@@ -302,7 +406,12 @@ $('content').addEventListener('click', async e => {
     api.open_external(href);
   } else if (current) {
     const p = await api.resolve_link(current, href);
-    if (p) await openFile(p);
+    if (p) { await openFile(p); }
+    else {
+      // Markdown 以外（PDF・Word など）は、関連づけられたアプリで開く
+      const r = await api.open_local(current, href);
+      if (r && r.error) showMsg(r.error);
+    }
   }
 });
 
@@ -313,6 +422,7 @@ $('btnPrint').onclick = openPrint;
 $('btnSide').onclick = toggleSide;
 $('filter').oninput = renderList;
 document.addEventListener('keydown', e => {
+  if (fontDlgOpen()) { if (e.key === 'Escape') closeFontDlg(); return; }
   if (MdPrint.isOpen()) return;
   if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); openPrint(); return; }
   if (e.ctrlKey && !e.shiftKey && (e.key === '+' || e.key === '=' || e.key === ';')) { e.preventDefault(); zoomBy(1.1); return; }
@@ -325,6 +435,234 @@ document.addEventListener('keydown', e => {
   else if (e.ctrlKey && e.key.toLowerCase() === 'b') { e.preventDefault(); toggleSide(); }
 });
 
+// ---- 設定（フォント・前回の状態の復元）
+let prefs = { fonts: {}, zoom: null, side_hidden: false }, prefsReady = false, prefsTimer = null;
+const FONT_PARTS = {
+  ui:      { label: '画面', family: '"Yu Gothic UI", "Segoe UI", sans-serif', size: 14, min: 8, max: 40 },
+  body:    { label: '本文',                     family: '"Yu Gothic UI", "Segoe UI", sans-serif', size: 14, min: 8, max: 60 },
+  head:    { label: '見出し',                   family: '' },
+  code:    { label: 'コード',                   family: 'Consolas, "Cascadia Mono", monospace',  size: 13, min: 8, max: 60 },
+  diagram: { label: '図・グラフ',               family: '"trebuchet ms", verdana, arial, sans-serif', size: 16, min: 8, max: 60 },
+};
+const GENERIC_FONTS = new Set(['serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui', 'ui-serif', 'ui-sans-serif', 'ui-monospace']);
+function cssFamily(s) {                 // 入力されたフォント名を、CSS に安全に入れられる形にする
+  if (!s) return '';
+  const n = String(s).split(',').map(x => x.replace(/["'`;{}<>\\\r\n\t]/g, '').trim()).find(Boolean);   // 1つだけ使う
+  if (!n) return '';
+  return GENERIC_FONTS.has(n.toLowerCase()) ? n.toLowerCase() : '"' + n + '"';
+}
+const fontPref = part => (prefs.fonts && prefs.fonts[part]) || {};
+
+function mermaidConfig(theme) {         // 既定値も毎回すべて渡す（前の設定が残らないように）
+  const d = fontPref('diagram'), size = d.size || FONT_PARTS.diagram.size;
+  const fam = cssFamily(d.family) || FONT_PARTS.diagram.family;
+  const k = size / FONT_PARTS.diagram.size;
+  return {
+    startOnLoad: false, securityLevel: 'strict',
+    theme: theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default'),
+    fontFamily: fam,
+    themeVariables: { fontFamily: fam, fontSize: size + 'px' },
+    gantt: { fontSize: Math.round(11 * k), sectionFontSize: Math.round(11 * k), barHeight: Math.round(20 * k), barGap: Math.round(4 * k) },
+  };
+}
+function vegaConfig() {
+  // 軸・凡例・タイトル・見出し・文字の各部分に、名前と大きさを渡す（Vega-Lite の既定の大きさに、Mermaid と同じ倍率を掛ける）。
+  // 設定していない項目は渡さず、Vega-Lite の既定のままにする。spec 自身が config や fontSize を持つときは、そちらが優先される
+  const d = fontPref('diagram'), fam = cssFamily(d.family);
+  const cfg = { background: '#ffffff' };
+  if (fam) cfg.font = fam;
+  if (!fam && !d.size) return cfg;
+  const k = (d.size || FONT_PARTS.diagram.size) / FONT_PARTS.diagram.size, px = n => Math.round(n * k * 10) / 10;
+  const f = (label, title) => {
+    const o = {};
+    if (fam) { if (label) o[label[0]] = fam; if (title) o[title[0]] = fam; }
+    if (d.size) { if (label) o[label[1]] = px(label[2]); if (title) o[title[1]] = px(title[2]); }
+    return o;
+  };
+  cfg.axis = f(['labelFont', 'labelFontSize', 10], ['titleFont', 'titleFontSize', 11]);
+  cfg.legend = f(['labelFont', 'labelFontSize', 10], ['titleFont', 'titleFontSize', 11]);
+  cfg.header = f(['labelFont', 'labelFontSize', 10], ['titleFont', 'titleFontSize', 10]);
+  cfg.title = fam ? { font: fam, subtitleFont: fam } : {};
+  if (d.size) { cfg.title.fontSize = px(13); cfg.title.subtitleFontSize = px(12); cfg.text = { fontSize: px(11) }; }
+  if (fam) cfg.text = Object.assign(cfg.text || {}, { font: fam });
+  return cfg;
+}
+
+function applyFonts() {
+  const root = document.documentElement.style;
+  const put = (name, v) => v ? root.setProperty(name, v) : root.removeProperty(name);
+  put('--ui-font', cssFamily(fontPref('ui').family));
+  put('--body-font', cssFamily(fontPref('body').family));
+  put('--head-font', cssFamily(fontPref('head').family));
+  put('--code-font', cssFamily(fontPref('code').family));
+  const hs = fontPref('head').sizes || {};
+  for (const l of ['h1', 'h2', 'h3', 'h4']) put('--' + l + '-size', hs[l] ? hs[l] + 'px' : '');
+  put('--body-size', fontPref('body').size ? fontPref('body').size + 'px' : '');
+  put('--code-size', fontPref('code').size ? fontPref('code').size + 'px' : '');
+  const k = (fontPref('ui').size || FONT_PARTS.ui.size) / FONT_PARTS.ui.size;   // 画面の部品は、全体を拡大縮小して大きさを合わせる
+  for (const id of ['toolbar', 'side', 'top']) $(id).style.zoom = k === 1 ? '' : k;
+  if (window.mermaid) window.mermaid.initialize(mermaidConfig());
+  if (fitMode) fitWidth();
+}
+
+function savePrefsSoon() {              // 表示倍率・一覧の表示は、変えたあと少し待ってまとめて保存する
+  if (!prefsReady || !api) return;
+  clearTimeout(prefsTimer);
+  prefsTimer = setTimeout(() => {
+    prefs.zoom = { value: zoom, fit: fitMode };
+    prefs.side_hidden = $('side').classList.contains('hidden');
+    api.set_prefs({ zoom: prefs.zoom, side_hidden: prefs.side_hidden });
+  }, 400);
+}
+
+// ---- フォントの設定ダイアログ
+let fontListLoaded = false;
+const fontDlgOpen = () => !$('fveil').hidden;
+function closeFontDlg() { $('fveil').hidden = true; }
+
+function refreshSamples() {
+  for (const part of Object.keys(FONT_PARTS)) {
+    const el = document.querySelector(`[data-sample="${part}"]`); if (!el) continue;
+    const spec = FONT_PARTS[part], p = fontPref(part);
+    const fam = cssFamily(p.family) || (part === 'head' ? cssFamily(fontPref('body').family) || FONT_PARTS.body.family : spec.family);
+    el.style.fontFamily = fam;
+    el.style.fontSize = Math.min(28, part === 'head' ? ((p.sizes || {}).h2 || 21) : (p.size || spec.size || 16)) + 'px';
+    el.style.fontWeight = part === 'head' ? '700' : '400';
+  }
+}
+// 数値の入力欄。ブラウザー標準の ▲▼ は、空欄から押すと最小値になってしまうので、
+// 既定の大きさから増減する ▲▼ を自前で付ける（キーボードの ↑↓ も同じ）
+function makeNumberBox(opts) {          // opts: { part, kind, level, min, max, value, dflt(): 既定の数, placeholder, title }
+  const wrap = document.createElement('span'); wrap.className = 'numbox';
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.inputMode = 'numeric'; inp.autocomplete = 'off';
+  inp.value = opts.value || ''; inp.placeholder = opts.placeholder || '';
+  if (opts.title) inp.title = opts.title;
+  inp.dataset.part = opts.part; inp.dataset.kind = opts.kind;
+  if (opts.level) inp.dataset.level = opts.level;
+  const step = d => {
+    const base = parseInt(inp.value, 10) || opts.dflt();
+    inp.value = Math.min(opts.max, Math.max(opts.min, base + d));
+    inp.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp') { e.preventDefault(); step(1); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); step(-1); }
+  });
+  const arrows = document.createElement('span'); arrows.className = 'arrows';
+  for (const [txt, d] of [['▲', 1], ['▼', -1]]) {
+    const b = document.createElement('button'); b.type = 'button'; b.tabIndex = -1; b.textContent = txt;
+    b.onclick = () => step(d); arrows.appendChild(b);
+  }
+  wrap.appendChild(inp); wrap.appendChild(arrows);
+  return wrap;
+}
+const HEAD_DEFAULT_RATIO = { h1: 2, h2: 1.5, h3: 1.17, h4: 1 };
+
+function resetPart(part) {              // 1つの部分（名前と大きさのすべて）を既定に戻す
+  prefs.fonts = { ...prefs.fonts }; delete prefs.fonts[part];
+  api.set_prefs({ fonts: prefs.fonts });
+  document.querySelectorAll(`#ftable input[data-part="${part}"]`).forEach(i => { i.value = ''; delete i.dataset.keep; });
+  applyFonts(); refreshSamples();
+  return part === 'diagram' ? redrawKeepingPosition() : Promise.resolve();
+}
+
+function buildFontRows() {
+  const table = $('ftable'); table.textContent = '';
+  for (const [part, spec] of Object.entries(FONT_PARTS)) {
+    const p = fontPref(part), tr = document.createElement('tr');
+    const th = document.createElement('th'); th.textContent = spec.label; tr.appendChild(th);
+    // フォント名と大きさは、隣り合わせに置く
+    const td = document.createElement('td'), fam = document.createElement('input');
+    fam.type = 'text'; fam.setAttribute('list', 'fontlist'); fam.value = p.family || '';
+    const dflt = part === 'head' ? '（本文と同じ）' : '既定: ' + spec.family.split(',')[0].replace(/"/g, '');
+    fam.placeholder = dflt; fam.dataset.part = part; fam.dataset.kind = 'family'; fam.autocomplete = 'off';
+    // 値が入っていると、候補が入力に合うものだけに絞られてしまう。選んだ時点で値を一時的に空欄へ移し、
+    // 候補を全部出す（文字を打てば、そのまま絞り込める）。何も選ばず離れたら、元の値に戻す
+    fam.addEventListener('focus', () => {
+      if (fam.value) { fam.dataset.keep = fam.value; fam.placeholder = fam.value + '（いまの設定）'; fam.value = ''; }
+    });
+    fam.addEventListener('blur', () => {
+      if (!fam.value && fam.dataset.keep) fam.value = fam.dataset.keep;
+      delete fam.dataset.keep; fam.placeholder = dflt;
+    });
+    td.appendChild(fam);
+    if (spec.size) {
+      td.appendChild(makeNumberBox({ part, kind: 'size', min: spec.min, max: spec.max, value: p.size,
+        dflt: () => spec.size, placeholder: String(spec.size) }));
+      td.appendChild(document.createTextNode(' px'));
+    }
+    const x = document.createElement('button'); x.type = 'button'; x.textContent = '既定'; x.title = 'この部分の名前と大きさを、既定に戻す';
+    x.style.marginLeft = '6px'; x.onclick = () => resetPart(part);
+    td.appendChild(x); tr.appendChild(td);
+    const tdX = document.createElement('td'), sm = document.createElement('span');
+    sm.dataset.sample = part; sm.textContent = 'あいう Abc'; tdX.appendChild(sm); tr.appendChild(tdX);
+    table.appendChild(tr);
+    if (part === 'head') {              // 見出し: H1〜H4 それぞれの大きさ。空欄は本文に対する既定の比率
+      const r2 = document.createElement('tr'), th2 = document.createElement('th');
+      th2.textContent = '見出しの大きさ(px)'; th2.style.fontWeight = '400'; th2.style.fontSize = '12px'; r2.appendChild(th2);
+      const td2 = document.createElement('td'); td2.colSpan = 2;
+      const hs = p.sizes || {}, names = { h1: '2倍', h2: '1.5倍', h3: '1.17倍', h4: '1倍' };
+      for (const l of ['h1', 'h2', 'h3', 'h4']) {
+        const lab = document.createElement('span'); lab.textContent = l.toUpperCase() + ' ';
+        lab.style.margin = l === 'h1' ? '0 2px 0 0' : '0 2px 0 8px';
+        td2.appendChild(lab);
+        td2.appendChild(makeNumberBox({ part: 'head', kind: 'hsize', level: l, min: 8, max: 120, value: hs[l],
+          dflt: () => Math.round((fontPref('body').size || FONT_PARTS.body.size) * HEAD_DEFAULT_RATIO[l]),
+          placeholder: names[l], title: l.toUpperCase() + ' の大きさ(px)。空欄は本文に対する既定の比率（' + names[l] + '）' }));
+      }
+      r2.appendChild(td2); table.appendChild(r2);
+    }
+  }
+  refreshSamples();
+}
+
+async function openFontDlg() {
+  buildFontRows();
+  $('fveil').hidden = false;
+  if (!fontListLoaded) {
+    fontListLoaded = true;
+    try {
+      const names = await api.list_fonts(), dl = $('fontlist');
+      for (const n of names) { const o = document.createElement('option'); o.value = n; dl.appendChild(o); }
+    } catch (e) { /* 一覧が取れなくても、名前は直接入力できる */ }
+  }
+}
+async function redrawKeepingPosition() {   // 図は描き直さないと変わらない。読んでいる位置は保つ
+  if (!current) return;
+  const top = $('scroll').scrollTop;
+  await openFile(current);
+  $('scroll').scrollTop = top;
+}
+async function onFontInput(e) {
+  const t = e.target; if (!t.dataset || !t.dataset.part) return;
+  const part = t.dataset.part, spec = FONT_PARTS[part], cur = { ...fontPref(part) };
+  if (t.dataset.kind === 'family') cur.family = cssFamily(t.value).replace(/"/g, '');
+  else if (t.dataset.kind === 'hsize') {
+    const n = Math.round(parseFloat(t.value)), sizes = { ...(cur.sizes || {}) };
+    if (isFinite(n)) sizes[t.dataset.level] = Math.min(120, Math.max(8, n)); else delete sizes[t.dataset.level];
+    t.value = sizes[t.dataset.level] || ''; cur.sizes = sizes;
+  } else {
+    const n = Math.round(parseFloat(t.value));
+    cur.size = isFinite(n) ? Math.min(spec.max, Math.max(spec.min, n)) : 0;
+    t.value = cur.size || '';
+  }
+  prefs.fonts = { ...prefs.fonts, [part]: cur };
+  api.set_prefs({ fonts: prefs.fonts });
+  applyFonts(); refreshSamples();
+  if (part === 'diagram') await redrawKeepingPosition();
+}
+$('ftable').addEventListener('change', onFontInput);
+$('btnFont').onclick = openFontDlg;
+$('fClose').onclick = closeFontDlg;
+$('fveil').addEventListener('mousedown', e => { if (e.target === $('fveil')) closeFontDlg(); });
+$('fReset').onclick = async () => {
+  prefs.fonts = {};
+  api.set_prefs({ fonts: {} });
+  applyFonts(); buildFontRows();
+  await redrawKeepingPosition();
+};
+
 // --- 表示倍率 -------------------------------------------------------------
 let zoom = 1, fitMode = false;
 const Z_MIN = 0.1, Z_MAX = 5;
@@ -335,6 +673,7 @@ function setZoom(z, fit) {
   $('content').style.zoom = zoom;
   $('zVal').value = Math.round(zoom * 100);
   $('zFit').classList.toggle('active', fitMode);
+  savePrefsSoon();
 }
 
 const overflowing = () => $('scroll').scrollWidth > $('scroll').clientWidth + 1;
@@ -385,6 +724,11 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) sync
 
 window.addEventListener('pywebviewready', async () => {
   api = window.pywebview.api;
+  try { prefs = Object.assign(prefs, await api.get_prefs()); } catch (e) { /* 設定が読めなければ既定のまま */ }
+  applyFonts();
+  if (prefs.side_hidden) toggleSide();
+  if (prefs.zoom) setZoom(prefs.zoom.value, prefs.zoom.fit);
+  prefsReady = true;
   await MdPrint.init({
     api, content: () => $('content'), name: fileName, path: () => current, hasDocument: () => !!current,
     beforePrint: printBeforeDiagrams,

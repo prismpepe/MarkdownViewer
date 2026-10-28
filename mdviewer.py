@@ -21,13 +21,25 @@ import webbrowser
 
 import dialogs
 import printing
+import uiprefs
 from sanitize import sanitize
 
 MD_EXTENSIONS = (".md", ".markdown", ".mdown", ".mkd")
+APP_VERSION = "1.3.0"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
+APP_TITLE = f"Markdown ビューア v{APP_VERSION}"
 PROG_ID = "MarkdownViewer.File"
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv"}
 MAX_FILES = 5000
 MAX_INLINE_IMAGE = 20 * 1024 * 1024
+DATA_EXTENSIONS = (".csv", ".tsv", ".json")   # Vega-Lite の data.url で読めるローカルファイル
+MAX_DATA_FILE = 20 * 1024 * 1024
+# 文書内のリンクから、関連づけられたアプリで開いてよいローカルファイル。
+# 実行ファイル・スクリプト・ショートカット・マクロ付き Office などは含めない
+OPEN_EXTENSIONS = (
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".rtf",
+    ".odt", ".ods", ".odp", ".txt", ".csv", ".tsv",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp",
+)
 
 
 def resource_path(name):
@@ -156,6 +168,13 @@ class Api:
         self.md = make_renderer()
         self.start_path = start_path
         self._mermaid = None
+        self._vendor = {}
+        self._doc_dir = None      # いま開いている文書のフォルダー（Vega-Lite のデータ読み込みの基準）
+        self._fonts = None
+        # ファイル名を指定して起動したときは、その回の使用フォルダー・開いたファイルを記憶しない
+        # （次回の起動で、そのフォルダーが「前回のフォルダー」として復元されないように）。
+        # 「フォルダーを開く」「ファイルを開く」で利用者が選び直したら、記憶を再開する
+        self._persist_location = not (start_path and os.path.isfile(start_path))
 
     # --- 画面から呼ばれる ---------------------------------------------------
     def get_initial(self):
@@ -171,20 +190,38 @@ class Api:
                 result["folder"] = os.path.dirname(start)
             else:
                 result["error"] = f"見つかりません: {start}"
+        else:
+            # 何も指定しない起動: 前回のフォルダー（と開いていたファイル）をそのまま復元する
+            last = settings.get("last_folder")
+            if last and os.path.isdir(last):
+                result["folder"] = last
+                last_file = settings.get("last_file")
+                if (last_file and os.path.isfile(last_file)
+                        and os.path.normcase(os.path.abspath(last_file)).startswith(
+                            os.path.normcase(os.path.abspath(last)) + os.sep)):
+                    result["file"] = last_file
         return result
 
     def pick_folder(self, initial=None):
-        return dialogs.pick_folder(initial_dir(initial))
+        path = dialogs.pick_folder(initial_dir(initial))
+        if path:
+            self._persist_location = True
+        return path
 
     def pick_file(self, initial=None):
-        return dialogs.pick_file(initial_dir(initial))
+        path = dialogs.pick_file(initial_dir(initial))
+        if path:
+            self._persist_location = True
+        return path
 
     def list_files(self, folder):
         if not os.path.isdir(folder):
             return {"error": f"フォルダーが見つかりません: {folder}", "files": []}
-        settings = load_settings()
-        settings["last_folder"] = folder
-        save_settings(settings)
+        if self._persist_location:
+            settings = load_settings()
+            if settings.get("last_folder") != folder:
+                settings["last_folder"] = folder
+                save_settings(settings)
         return {"error": None, "files": list_markdown(folder),
                 "truncated": False}
 
@@ -194,14 +231,48 @@ class Api:
         except OSError as e:
             return {"error": f"開けません: {e}"}
         base = os.path.dirname(path)
+        self._doc_dir = base
+        if self._persist_location:
+            settings = load_settings()
+            if settings.get("last_file") != path:
+                settings["last_file"] = path
+                save_settings(settings)
         html = sanitize(self.md.render(text, {"base": base}),
                         lambda src: inline_image(src, base))
         try:
-            self._window.set_title(f"{os.path.basename(path)} - Markdown ビューア")
+            self._window.set_title(f"{os.path.basename(path)} - {APP_TITLE}")
         except Exception:
             pass
         return {"error": None, "html": html, "path": path,
                 "name": os.path.basename(path)}
+
+    def read_data(self, uri):
+        """Vega-Lite の data.url に書かれた相対パスのデータ（CSV/TSV/JSON）を読む。
+        文書のあるフォルダーとその下だけ。絶対パス・../ での外出・他の拡張子は拒否する。"""
+        from urllib.parse import unquote
+        base = self._doc_dir
+        if not base:
+            return {"error": "文書が開かれていません"}
+        rel = unquote(str(uri).split("#")[0].split("?")[0]).strip()
+        if (not rel or os.path.isabs(rel) or re.match(r"^[A-Za-z]:", rel)
+                or rel.startswith(("\\\\", "/")) or re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", rel)):
+            return {"error": "相対パスだけ使えます: " + str(uri)}
+        if not rel.lower().endswith(DATA_EXTENSIONS):
+            return {"error": "読めるファイルは .csv / .tsv / .json だけです: " + str(uri)}
+        root = os.path.realpath(base)
+        path = os.path.realpath(os.path.join(root, rel))
+        try:
+            inside = os.path.commonpath([root, path]) == root
+        except ValueError:          # 別ドライブなど
+            inside = False
+        if not inside:
+            return {"error": "文書のフォルダーの外は読めません: " + str(uri)}
+        try:
+            if os.path.getsize(path) > MAX_DATA_FILE:
+                return {"error": "ファイルが大きすぎます（20MBまで）: " + str(uri)}
+            return {"error": None, "text": read_text(path)}
+        except OSError as e:
+            return {"error": f"開けません: {e}"}
 
     def resolve_link(self, current, href):
         """文書内の相対リンクを開く先に解決する。Markdown 以外は開かない。"""
@@ -213,6 +284,50 @@ class Api:
         if os.path.isfile(path) and is_markdown(path):
             return path
         return None
+
+    def open_local(self, current, href):
+        """文書内のローカルファイル（PDF・Word など）へのリンクを、関連づけられたアプリで開く。
+        許す書き方: 相対パス（../ も可。文書のあるフォルダー基準）、file:///C:/…、C:/…。
+        ネットワーク共有（UNC）・存在しないファイル・OPEN_EXTENSIONS 以外は開かない。"""
+        from urllib.parse import unquote, urlsplit
+        from urllib.request import url2pathname
+        raw = str(href).strip()
+        if re.match(r"(?i)^file:", raw):
+            parts = urlsplit(raw)
+            if parts.netloc not in ("", "localhost"):
+                return {"error": "ネットワーク上のファイルへのリンクは開けません: " + raw}
+            path = url2pathname(unquote(parts.path))
+            if os.name == "nt" and re.match(r"^[\\/][A-Za-z]:", path):
+                path = path[1:]
+            if not re.match(r"^[A-Za-z]:[\\/]", path):
+                return {"error": "ドライブ名から始まるパスだけ開けます: " + raw}
+        else:
+            rel = unquote(raw.split("#")[0].split("?")[0]).strip()
+            if not rel:
+                return {"error": "開き先がありません"}
+            if rel.startswith(("\\\\", "//")):
+                return {"error": "ネットワーク上のファイルへのリンクは開けません: " + raw}
+            if re.match(r"^[A-Za-z]:[\\/]", rel):
+                path = rel
+            elif re.match(r"^[A-Za-z][A-Za-z0-9+.-]*:", rel) or os.path.isabs(rel):
+                return {"error": "このリンクは開けません: " + raw}
+            else:
+                if not current:
+                    return {"error": "文書が開かれていません"}
+                path = os.path.join(os.path.dirname(current), rel)
+        path = os.path.normpath(path)
+        if not path.lower().endswith(OPEN_EXTENSIONS):
+            return {"error": "この種類のファイルは開けません（%s）" % os.path.basename(path)}
+        if not os.path.isfile(path):
+            return {"error": "ファイルが見つかりません: " + path}
+        real = os.path.realpath(path)
+        if not real.lower().endswith(OPEN_EXTENSIONS):      # リンク先の実体も同じ条件で確かめる
+            return {"error": "この種類のファイルは開けません（%s）" % os.path.basename(real)}
+        try:
+            os.startfile(path)
+        except OSError as e:
+            return {"error": f"開けませんでした: {e}"}
+        return {"error": None}
 
     # --- Mermaid の追加アイコン（Architecture Diagram の `logos:slack-icon` など）---------
     def list_icon_packs(self):
@@ -239,6 +354,39 @@ class Api:
             with open(resource_path("vendor/mermaid.min.js"), encoding="utf-8") as f:
                 self._mermaid = f.read()
         return self._mermaid
+
+    # Vega-Lite 用のライブラリ。vendor/ に置いた3ファイルだけを、図があるときに画面が取りに来る
+    _VENDOR_FILES = {
+        "vega": "vega.min.js",
+        "vega-lite": "vega-lite.min.js",
+        "vega-embed": "vega-embed.min.js",
+    }
+
+    def get_vendor(self, name):
+        fname = self._VENDOR_FILES.get(name)
+        if fname is None:
+            raise ValueError("unknown vendor library: %s" % name)
+        if name not in self._vendor:
+            with open(resource_path("vendor/" + fname), encoding="utf-8") as f:
+                self._vendor[name] = f.read()
+        return self._vendor[name]
+
+    # --- 画面の設定（フォント・表示倍率・一覧の表示）-------------------------
+    def get_prefs(self):
+        return uiprefs.clean_prefs(load_settings())
+
+    def set_prefs(self, patch):
+        clean = uiprefs.clean_prefs(patch)
+        if clean:
+            settings = load_settings()
+            settings.update(clean)
+            save_settings(settings)
+        return clean
+
+    def list_fonts(self):
+        if self._fonts is None:
+            self._fonts = uiprefs.list_system_fonts()
+        return self._fonts
 
     # --- 印刷・PDF ----------------------------------------------------------
     def get_print_prefs(self):
@@ -353,6 +501,73 @@ def unregister_association():
     message("登録を解除しました。")
 
 
+class WindowKeeper:
+    """ウィンドウの位置・大きさ・最大化を、閉じるときに保存する（次の起動で戻す）。
+
+    高 DPI の画面では、作るときに渡す大きさと、あとから読み取る大きさの単位が
+    違うことがあるので、表示できた時点で両者の比を測り、保存する値をそろえる
+    （そろえないと、起動のたびにウィンドウが少しずつ大きくなる）。
+    どこかで失敗しても、保存・復元をやめるだけで、アプリの動作には影響しない。
+    """
+
+    def __init__(self, window, width, height, maximize):
+        self.window = window
+        self.width, self.height = width, height
+        self.maximize = maximize
+        self.ratio_w = self.ratio_h = 1.0
+        self.measured = False
+
+    def _bounds(self):
+        """(左, 上, 幅, 高さ, 最大化か)。最小化中などで取れなければ None。"""
+        native = getattr(self.window, "native", None)
+        if native is None:
+            w = self.window
+            return (w.x, w.y, w.width, w.height, False)
+        try:
+            state = int(native.WindowState)              # 0 通常, 1 最小化, 2 最大化
+        except Exception:
+            state = {"Normal": 0, "Minimized": 1, "Maximized": 2}.get(str(native.WindowState), 0)
+        if state == 1:
+            return None
+        if state == 2:                                   # 最大化の前の、元の位置と大きさを残す
+            r = native.RestoreBounds
+            return (r.X, r.Y, r.Width, r.Height, True)
+        return (native.Left, native.Top, native.Width, native.Height, False)
+
+    def on_loaded(self):
+        if self.measured:
+            return
+        self.measured = True
+        try:
+            b = self._bounds()
+            if b and not b[4]:
+                rw, rh = b[2] / self.width, b[3] / self.height
+                if 0.95 <= rw <= 3 and 0.95 <= rh <= 3:  # 画面に収まるよう削られた場合は使わない
+                    self.ratio_w, self.ratio_h = rw, rh
+        except Exception:
+            pass
+        if self.maximize:
+            try:
+                self.window.maximize()
+            except Exception:
+                pass
+
+    def on_closing(self):
+        try:
+            b = self._bounds()
+            if not b:
+                return
+            x, y, w, h, maximized = b
+            settings = load_settings()
+            settings["window"] = {
+                "x": int(x), "y": int(y),
+                "width": int(round(w / self.ratio_w)), "height": int(round(h / self.ratio_h)),
+                "maximized": bool(maximized)}
+            save_settings(settings)
+        except Exception:
+            pass
+
+
 def main():
     args = sys.argv[1:]
     if args and args[0] == "--register":
@@ -369,9 +584,20 @@ def main():
         html = f.read()
     with open(resource_path("print.js"), encoding="utf-8") as f:
         html = html.replace("/*PRINT_JS*/", f.read())
-    api._window = webview.create_window(
-        "Markdown ビューア", html=html, js_api=api,
-        width=1200, height=800, min_size=(640, 400))
+    html = html.replace("__APP_VERSION__", APP_VERSION)
+    # 前回のウィンドウの位置・大きさを戻す（画面の外に出てしまう位置は使わない）
+    geo = uiprefs.clean_window(load_settings().get("window"))
+    width, height = geo.get("width", 1200), geo.get("height", 800)
+    place = {}
+    if uiprefs.place_visible(geo, uiprefs.virtual_screen()):
+        place = {"x": geo["x"], "y": geo["y"]}
+    window = webview.create_window(
+        APP_TITLE, html=html, js_api=api,
+        width=width, height=height, min_size=(640, 400), **place)
+    api._window = window
+    keeper = WindowKeeper(window, width, height, bool(geo.get("maximized")))
+    window.events.loaded += keeper.on_loaded
+    window.events.closing += keeper.on_closing
     webview.start()
 
 
