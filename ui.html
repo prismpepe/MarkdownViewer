@@ -27,14 +27,18 @@ body { display: flex; flex-direction: column; background: var(--bg); color: var(
 #side { width: 320px; min-width: 200px; background: var(--side);
   border-right: 1px solid var(--border); display: flex; flex-direction: column; }
 #side.hidden { display: none; }
-#toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px;
+#toolbar { display: flex; flex-wrap: wrap; gap: 6px 0; align-items: center; padding: 8px 12px;
   background: var(--side); border-bottom: 1px solid var(--border); }
-#zoombox { display: flex; align-items: center; gap: 4px; }
+/* 窓を狭めたときは、グループ（区切り線で分けた塊）の境目で折り返す。ボタンの文字は折り返さない */
+#toolbar .group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding-right: 10px; margin-right: 10px;
+  border-right: 1px solid var(--border); white-space: nowrap; }
+#toolbar .group:last-child { border-right: 0; margin-right: 0; padding-right: 0; }
+#toolbar button, #toolbar span { white-space: nowrap; }
+#zoombox { display: inline-flex; align-items: center; gap: 4px; }
 #zoombox button { padding: 6px 10px; min-width: 34px; }
 #zoombox input { width: 64px; padding: 5px 4px; font: inherit; text-align: right;
   color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
 #zoombox button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-#toolbar .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
 #toolbar button { padding: 6px 14px; }
 #toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 #side h2 { margin: 0; padding: 8px 10px 0; font-size: 12px; color: var(--muted); font-weight: 600; }
@@ -139,16 +143,19 @@ button:hover { border-color: var(--accent); }
 </head>
 <body>
 <div id="toolbar">
-  <button id="btnFolder" class="primary" title="Ctrl+O">📁 フォルダーを開く</button>
-  <button id="btnFile" title="Ctrl+Shift+O">📄 ファイルを開く</button>
-  <span class="sep"></span>
-  <button id="btnSide" title="Ctrl+B">☰ 一覧を隠す</button>
-  <button id="btnReload" title="F5">↻ 更新</button>
-  <span class="sep"></span>
-  <button id="btnPrint" title="Ctrl+P">🖨 印刷／PDF</button>
-  <button id="btnFont" title="表示フォントの名前・大きさを設定する">🔤 フォント</button>
-  <span class="sep"></span>
-  <span id="zoombox">
+  <span class="group">
+    <button id="btnFolder" class="primary" title="Ctrl+O">📁 フォルダーを開く</button>
+    <button id="btnFile" title="Ctrl+Shift+O">📄 ファイルを開く</button>
+  </span>
+  <span class="group">
+    <button id="btnSide" title="Ctrl+B">☰ 一覧を隠す</button>
+    <button id="btnReload" title="F5">↻ 更新</button>
+  </span>
+  <span class="group">
+    <button id="btnPrint" title="Ctrl+P">🖨 印刷／PDF</button>
+    <button id="btnFont" title="表示フォントの名前・大きさを設定する">🔤 フォント</button>
+  </span>
+  <span id="zoombox" class="group">
     <span>表示倍率</span>
     <button id="zOut" title="縮小 (Ctrl+−)">−</button>
     <input id="zVal" type="number" min="10" max="500" step="5" value="100" title="倍率(%)を直接入力">%
@@ -375,9 +382,27 @@ async function openFile(path) {
   if (fitMode) fitWidth();           // 図が出来て幅が変わるので、もう一度合わせる
 }
 
+// 開いている文書を閉じて、空白の表示に戻す
+async function closeDocument() {
+  current = null;
+  $('content').innerHTML = '<div id="empty"></div>';
+  $('title').textContent = '';
+  $('scroll').scrollTop = 0;
+  $('scroll').scrollLeft = 0;
+  await api.close_document();
+}
+const samePath = (a, b) => !!a && !!b && a.replace(/[\\/]+$/, '').toLowerCase() === b.replace(/[\\/]+$/, '').toLowerCase();
+
+// 別のフォルダーへ移る。開いていた文書は、そのフォルダーのものではなくなるので閉じる（同じフォルダーなら一覧を取り直すだけ）
+async function switchFolder(p) {
+  if (samePath(p, folder)) { await loadFolder(p, true); return; }
+  if (current) await closeDocument();
+  await loadFolder(p, false);
+}
+
 async function chooseFolder() {
   const p = await api.pick_folder(folder);
-  if (p) await loadFolder(p, false);
+  if (p) await switchFolder(p);
   return p;
 }
 
