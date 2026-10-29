@@ -37,8 +37,7 @@ wide_md = os.path.join(tmp, 'wide.md')
 open(wide_md, 'w', encoding='utf-8').write("# 幅広の表\n\n" + "\n".join(rows) + "\n")
 
 api = mdviewer.Api(long_md)
-w = webview.create_window('t', html=open('ui.html', encoding='utf-8').read().replace(
-    '/*PRINT_JS*/', open('print.js', encoding='utf-8').read()), js_api=api, width=1300, height=800, x=20, y=20)
+w = webview.create_window('t', html=mdviewer.build_html(), js_api=api, width=1300, height=800, x=20, y=20)
 api._window = w
 results = []
 

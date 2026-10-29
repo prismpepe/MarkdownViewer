@@ -26,8 +26,7 @@ open(doc_a, 'w', encoding='utf-8').write("# Aの文書\n\n本文です。\n")
 open(os.path.join(folder_b, 'b.md'), 'w', encoding='utf-8').write("# Bの文書\n")
 
 api = mdviewer.Api(None)
-html = open('ui.html', encoding='utf-8').read().replace('/*PRINT_JS*/', open('print.js', encoding='utf-8').read())
-html = html.replace('__APP_VERSION__', mdviewer.APP_VERSION)
+html = mdviewer.build_html()
 w = webview.create_window('t', html=html, js_api=api, width=1100, height=700, x=20, y=20)
 api._window = w
 results = []

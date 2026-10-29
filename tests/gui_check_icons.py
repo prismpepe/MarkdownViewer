@@ -50,7 +50,7 @@ unknown = os.path.join(tmp, 'unknown.md')
 open(unknown, 'w', encoding='utf-8').write("# 未登録\n\n```mermaid\n" + UNKNOWN + "```\n")
 
 api = mdviewer.Api(with_icons)
-html = open('ui.html', encoding='utf-8').read().replace('/*PRINT_JS*/', open('print.js', encoding='utf-8').read())
+html = mdviewer.build_html()
 w = webview.create_window('t', html=html, js_api=api, width=1200, height=800, x=20, y=20)
 api._window = w
 results = []

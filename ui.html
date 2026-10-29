@@ -41,6 +41,18 @@ body { display: flex; flex-direction: column; background: var(--bg); color: var(
 #zoombox button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 #toolbar button { padding: 6px 14px; }
 #toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+#sBar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 6px 12px;
+  background: var(--side); border-bottom: 1px solid var(--border); }
+#sBar[hidden] { display: none; }
+#sBar input[type=text] { flex: 1 1 220px; min-width: 140px; max-width: 420px; font: inherit; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; }
+#sBar input[type=text].bad { border-color: #cf222e; }
+#sBar label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+#sBar button { white-space: nowrap; }
+#sCount { font-size: 12px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+#sCount.bad { color: #cf222e; }
+mark.find-hit { background: rgba(255, 211, 61, .5); color: inherit; border-radius: 2px; }
+mark.find-hit.cur { background: rgba(255, 150, 50, .85); outline: 2px solid #e8590c; }
 #side h2 { margin: 0; padding: 8px 10px 0; font-size: 12px; color: var(--muted); font-weight: 600; }
 button { font: inherit; padding: 4px 10px; border: 1px solid var(--border);
   background: var(--bg); color: var(--fg); border-radius: 6px; cursor: pointer; }
@@ -129,7 +141,8 @@ button:hover { border-color: var(--accent); }
   :root { --bg: #fff; --fg: #000; --muted: #444; --side: #f2f2f2; --border: #999; --accent: #0645ad; --code: #f2f2f2; }
   html, body { height: auto !important; overflow: visible !important; display: block !important;
     background: #fff !important; color: #000 !important; }
-  #toolbar, #msg, #side, #top, #pveil, #fveil { display: none !important; }
+  #toolbar, #msg, #side, #top, #sBar, #pveil, #fveil { display: none !important; }
+  mark.find-hit { background: none !important; color: inherit !important; outline: 0 !important; }
   #body, #main, #scroll { display: block !important; overflow: visible !important; height: auto !important;
     width: auto !important; flex: none !important; min-height: 0 !important; }
   #content { zoom: 1 !important; padding: 0 !important; }
@@ -150,6 +163,7 @@ button:hover { border-color: var(--accent); }
   <span class="group">
     <button id="btnSide" title="Ctrl+B">☰ 一覧を隠す</button>
     <button id="btnReload" title="F5">↻ 更新</button>
+    <button id="btnFind" title="Ctrl+F">🔍 検索</button>
   </span>
   <span class="group">
     <button id="btnPrint" title="Ctrl+P">🖨 印刷／PDF</button>
@@ -175,6 +189,15 @@ button:hover { border-color: var(--accent); }
 </aside>
 <div id="main">
   <div id="top"><span id="title"></span></div>
+  <div id="sBar" hidden>
+    <input id="sq" type="text" placeholder="検索する文字列" spellcheck="false">
+    <button id="sPrev" title="前の一致 (Shift+Enter / Shift+F3)">▲ 前へ</button>
+    <button id="sNext" title="次の一致 (Enter / F3)">▼ 次へ</button>
+    <label><input id="sCase" type="checkbox"> 大文字小文字を区別</label>
+    <label><input id="sRegex" type="checkbox"> 正規表現</label>
+    <span id="sCount"></span>
+    <button id="sClose" title="閉じる (Esc)">✕</button>
+  </div>
   <div id="scroll">
     <div id="content"><div id="empty"></div></div>
   </div>
@@ -191,6 +214,7 @@ button:hover { border-color: var(--accent); }
 </div>
 <script>
 /*PRINT_JS*/
+/*FIND_JS*/
 </script>
 <script>
 let api = null, folder = null, files = [], current = null;
@@ -384,6 +408,7 @@ async function openFile(path) {
   await renderDiagrams(r.path);
   await renderVega(r.path);
   if (fitMode) fitWidth();           // 図が出来て幅が変わるので、もう一度合わせる
+  if (finder.isOpen()) finder.refresh(true);
 }
 
 // 開いている文書を閉じて、空白の表示に戻す
@@ -393,6 +418,7 @@ async function closeDocument() {
   $('title').textContent = '';
   $('scroll').scrollTop = 0;
   $('scroll').scrollLeft = 0;
+  if (finder.isOpen()) finder.refresh(false);
   await api.close_document();
 }
 const samePath = (a, b) => !!a && !!b && a.replace(/[\\/]+$/, '').toLowerCase() === b.replace(/[\\/]+$/, '').toLowerCase();
@@ -450,9 +476,26 @@ $('btnReload').onclick = reload;
 $('btnPrint').onclick = openPrint;
 $('btnSide').onclick = toggleSide;
 $('filter').oninput = renderList;
+// ---- 検索（文書の中）
+const finder = MdSearch.create({
+  root: () => $('content'), hasDocument: () => !!current,
+  ui: { bar: $('sBar'), q: $('sq'), cs: $('sCase'), re: $('sRegex'), count: $('sCount') },
+});
+$('btnFind').onclick = () => finder.open();
+$('sNext').onclick = () => finder.step(1);
+$('sPrev').onclick = () => finder.step(-1);
+$('sClose').onclick = () => finder.close();
+$('sBar').addEventListener('keydown', e => {
+  if (e.key === 'Escape') { e.preventDefault(); finder.close(); }
+  else if (e.key === 'Enter') { e.preventDefault(); finder.step(e.shiftKey ? -1 : 1); }
+});
+
 document.addEventListener('keydown', e => {
   if (fontDlgOpen()) { if (e.key === 'Escape') closeFontDlg(); return; }
   if (MdPrint.isOpen()) return;
+  if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); finder.open(); return; }
+  if (e.key === 'F3') { e.preventDefault(); if (!finder.isOpen()) finder.open(); else finder.step(e.shiftKey ? -1 : 1); return; }
+  if (e.key === 'Escape' && finder.isOpen()) { e.preventDefault(); finder.close(); return; }
   if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === 'p') { e.preventDefault(); openPrint(); return; }
   if (e.ctrlKey && !e.shiftKey && (e.key === '+' || e.key === '=' || e.key === ';')) { e.preventDefault(); zoomBy(1.1); return; }
   if (e.ctrlKey && (e.key === '-' || e.key === '_')) { e.preventDefault(); zoomBy(1 / 1.1); return; }

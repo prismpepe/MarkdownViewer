@@ -28,7 +28,7 @@ import uiprefs
 from sanitize import sanitize
 
 MD_EXTENSIONS = (".md", ".markdown", ".mdown", ".mkd")
-APP_VERSION = "1.4.0"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
+APP_VERSION = "1.5.0"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
 APP_TITLE = f"Markdown ビューア v{APP_VERSION}"
 PROG_ID = "MarkdownViewer.File"
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv"}
@@ -569,6 +569,18 @@ class WindowKeeper:
             pass
 
 
+def build_html():
+    """画面を組み立てる。部品（印刷・検索）は文字列として埋め込む（読み込み元を持たない画面のため）。"""
+    def read(name):
+        with open(resource_path(name), encoding="utf-8") as f:
+            return f.read()
+
+    return (read("ui.html")
+            .replace("/*PRINT_JS*/", read("print.js"))
+            .replace("/*FIND_JS*/", read("vfind.js"))
+            .replace("__APP_VERSION__", APP_VERSION))
+
+
 def main():
     args = sys.argv[1:]
     if args and args[0] == "--register":
@@ -581,11 +593,7 @@ def main():
     import webview
     start = os.path.abspath(shellreg.clean_path_arg(args[0])) if args else None
     api = Api(start)
-    with open(resource_path("ui.html"), encoding="utf-8") as f:
-        html = f.read()
-    with open(resource_path("print.js"), encoding="utf-8") as f:
-        html = html.replace("/*PRINT_JS*/", f.read())
-    html = html.replace("__APP_VERSION__", APP_VERSION)
+    html = build_html()
     # 前回のウィンドウの位置・大きさを戻す（画面の外に出てしまう位置は使わない）
     geo = uiprefs.clean_window(load_settings().get("window"))
     width, height = geo.get("width", 1200), geo.get("height", 800)
