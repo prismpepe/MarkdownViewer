@@ -22,13 +22,14 @@ import webbrowser
 
 import cjk_emphasis
 import dialogs
+import filedrop
 import printing
 import shellreg
 import uiprefs
 from sanitize import sanitize
 
 MD_EXTENSIONS = (".md", ".markdown", ".mdown", ".mkd")
-APP_VERSION = "1.6.1"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
+APP_VERSION = "1.7.0"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
 APP_TITLE = f"Markdown ビューア v{APP_VERSION}"
 PROG_ID = "MarkdownViewer.File"
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv"}
@@ -569,6 +570,18 @@ class WindowKeeper:
             pass
 
 
+
+def _install_drop(window):
+    """ウィンドウへのドロップ（Markdown ファイル1つ／フォルダー1つ）を受ける。読み込みの完了後に1度だけ。"""
+    if getattr(window, "_drop_installed", False):
+        return
+    window._drop_installed = True
+    try:
+        filedrop.install(window, is_markdown, filedrop.open_in_window(window))
+    except Exception:
+        pass            # ドロップが使えなくても、ほかの機能は使えるようにする
+
+
 def build_html():
     """画面を組み立てる。部品（印刷・検索）は文字列として埋め込む（読み込み元を持たない画面のため）。"""
     def read(name):
@@ -606,6 +619,7 @@ def main():
     api._window = window
     keeper = WindowKeeper(window, width, height, bool(geo.get("maximized")))
     window.events.loaded += keeper.on_loaded
+    window.events.loaded += lambda: _install_drop(window)
     window.events.closing += keeper.on_closing
     webview.start()
 

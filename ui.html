@@ -448,6 +448,15 @@ async function chooseFile() {
   await openFile(p);
 }
 
+// ウィンドウへのドロップ。Python（filedrop.py）が、開くと決まった対象（Markdown ファイル1つ／フォルダー1つ）だけを渡してくる
+async function handleDrop(kind, path) {
+  if (MdPrint.isOpen() || fontDlgOpen()) return;
+  if (kind === 'folder') { await switchFolder(path); return; }
+  const dir = path.substring(0, path.lastIndexOf('\\'));
+  if (!samePath(dir, folder)) await loadFolder(dir, true);
+  await openFile(path);
+}
+
 async function reload() {
   if (!folder && !current) return;
   if (folder) await loadFolder(folder, true);
