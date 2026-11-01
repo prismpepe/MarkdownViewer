@@ -41,6 +41,16 @@ w = webview.create_window('t', html=mdviewer.build_html(), js_api=api, width=130
 api._window = w
 results = []
 
+PB = {
+    'none': "# 一\n\n本文\n\n# 二\n\n本文\n",
+    'class': "# 一\n\n本文\n\n<div class=\"page-break\"></div>\n\n# 二\n\n本文\n",
+    'three': "# 一\n\n<div class=\"page-break\"></div>\n\n# 二\n\n<div style=\"page-break-after: always;\"></div>\n\n# 三\n\n<div class=\"pagebreak\"></div>\n\n# 四\n",
+    'before': "# 一\n\n本文\n\n<p class=\"page-break-before\">ここから次のページ</p>\n\n本文\n",
+    'after': "<p class=\"page-break-after\">一ページ目だけ</p>\n\n二ページ目\n",
+    'inline': "# 一\n\n本文\n\n<div style=\"color:red; break-before: page\">二ページ目</div>\n",
+    'trailing': "# 一\n\n本文\n\n<div class=\"page-break\"></div>\n",
+}
+
 
 def js(code):
     return w.evaluate_js(code)
@@ -99,6 +109,21 @@ def drive():
     # 画面の部品（ツールバー・一覧）は紙に出ない: 短い文書は1ページ
     open_doc(short_md)
     check("短い文書は1ページ（画面の部品は紙に出ない）", pages(), 1)
+
+    # 改ページ（class / style）: 実際の PDF のページ数で確かめる
+    def pb(name):
+        p = os.path.join(tmp, f'pb_{name}.md')
+        open(p, 'w', encoding='utf-8', newline='\n').write(PB[name])
+        open_doc(p)
+        return pages(uri=p)
+    check("改ページが無ければ1ページ", pb('none'), 1)
+    check("class=page-break で2ページ", pb('class'), 2)
+    check("class と style と pagebreak の混在で4ページ", pb('three'), 4)
+    check("class=page-break-before で次のページへ", pb('before'), 2)
+    check("class=page-break-after の後ろが次のページ", pb('after'), 2)
+    check("style の改ページは通り、他の style（color）は無視される", pb('inline'), 2)
+    print("    末尾の改ページ（空白ページが増えるか）:", pb('trailing'), flush=True)
+    check("改ページの印は画面に点線で出る", js("getComputedStyle(document.querySelector('#content .page-break')).borderTopStyle"), 'dashed')
 
     # 印刷ダイアログ
     open_doc(wide_md)
