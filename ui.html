@@ -136,11 +136,6 @@ button:hover { border-color: var(--accent); }
 #content hr { border: 0; border-top: 1px solid var(--border); }
 #content li.task-list-item { list-style: none; margin-left: -1.4em; }
 
-/* 改ページの印（印刷・PDF で効く。画面では位置が分かるよう点線で示す） */
-#content .page-break, #content .pagebreak { height: 0; margin: 1.2em 0; border-top: 1px dashed var(--muted); position: relative; overflow: visible; }
-#content .page-break::after, #content .pagebreak::after { content: "改ページ"; position: absolute; right: 0; top: -.7em; padding: 0 6px;
-  font-size: 11px; color: var(--muted); background: var(--bg); }
-
 /* 印刷・PDF: 画面の部品を隠し、本文だけを紙に流す */
 @media print {
   :root { --bg: #fff; --fg: #000; --muted: #444; --side: #f2f2f2; --border: #999; --accent: #0645ad; --code: #f2f2f2; }
@@ -155,8 +150,8 @@ button:hover { border-color: var(--accent); }
   #content tr, #content img, #content .diagram, #content blockquote, #content li { break-inside: avoid; }
   #content thead { display: table-header-group; }
   #content pre { white-space: pre-wrap; word-break: break-all; overflow: visible; break-inside: avoid; }
-  #content .diagram { overflow: visible; }  #content .page-break, #content .pagebreak { break-after: page; height: 0 !important; margin: 0 !important; border: 0 !important; overflow: hidden; }
-  #content .page-break::after, #content .pagebreak::after { content: none !important; }
+  #content .diagram { overflow: visible; }
+  #content .page-break, #content .pagebreak { break-after: page; height: 0 !important; margin: 0 !important; border: 0 !important; overflow: hidden; }
   #content .page-break-before { break-before: page; }
   #content .page-break-after { break-after: page; }
   #content .page-break-avoid { break-inside: avoid; }

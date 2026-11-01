@@ -28,7 +28,7 @@ import uiprefs
 from sanitize import sanitize
 
 MD_EXTENSIONS = (".md", ".markdown", ".mdown", ".mkd")
-APP_VERSION = "1.6.0"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
+APP_VERSION = "1.6.1"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
 APP_TITLE = f"Markdown ビューア v{APP_VERSION}"
 PROG_ID = "MarkdownViewer.File"
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv"}

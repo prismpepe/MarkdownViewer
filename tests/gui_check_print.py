@@ -123,7 +123,10 @@ def drive():
     check("class=page-break-after の後ろが次のページ", pb('after'), 2)
     check("style の改ページは通り、他の style（color）は無視される", pb('inline'), 2)
     print("    末尾の改ページ（空白ページが増えるか）:", pb('trailing'), flush=True)
-    check("改ページの印は画面に点線で出る", js("getComputedStyle(document.querySelector('#content .page-break')).borderTopStyle"), 'dashed')
+    pb('class')
+    check("画面には何も表示しない（高さ0・線なし・文字なし）", js("""(() => { const e = document.querySelector('#content .page-break');
+        const c = getComputedStyle(e), a = getComputedStyle(e, '::after');
+        return [e.getBoundingClientRect().height, c.borderTopStyle, c.borderBottomStyle, a.content]; })()"""), [0, 'none', 'none', 'none'])
 
     # 印刷ダイアログ
     open_doc(wide_md)
