@@ -110,6 +110,10 @@ def drive():
     time.sleep(1)
     check("窓を広げ直すと、また1行に戻る", json.loads(toolbar())['rows'], 1)
 
+    # hidden 属性の要素は、実際に隠れている（display を指定した CSS が、hidden を打ち消していないか）
+    shown = js("[...document.querySelectorAll('[hidden]')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.id || e.className || e.tagName)")
+    check("hidden 属性の要素が、すべて隠れている", shown, [])
+
     print("RESULT", sum(results), "/", len(results), flush=True)
     os._exit(0)
 
