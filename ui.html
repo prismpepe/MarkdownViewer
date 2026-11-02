@@ -10,7 +10,7 @@
   --border: #d0d7de; --accent: #0969da; --sel: #ddf4ff; --code: #f3f4f6;
   /* 表示フォント（フォントの設定で変わる。--head-font は設定したときだけ入る） */
   --ui-font: "Yu Gothic UI", "Segoe UI", sans-serif;
-  --body-font: "Yu Gothic UI", "Segoe UI", sans-serif; --body-size: 14px;
+  --body-font: "Yu Gothic UI", "Segoe UI"; --body-size: 14px;
   --code-font: Consolas, "Cascadia Mono", monospace; --code-size: 13px;
 }
 @media (prefers-color-scheme: dark) {
@@ -76,7 +76,7 @@ button:hover { border-color: var(--accent); }
 #title { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #scroll { flex: 1; overflow: auto; }
 #content { padding: 24px 32px 64px; transform-origin: top left;
-  font-family: var(--body-font); font-size: var(--body-size); }
+  font-family: var(--body-font), sans-serif; font-size: var(--body-size); }
 #empty { color: var(--muted); text-align: center; margin-top: 20vh; }
 #empty button { margin-top: 12px; padding: 8px 18px; }
 #msg { color: #cf222e; padding: 8px 12px; }
@@ -146,6 +146,11 @@ button:hover { border-color: var(--accent); }
   #body, #main, #scroll { display: block !important; overflow: visible !important; height: auto !important;
     width: auto !important; flex: none !important; min-height: 0 !important; }
   #content { zoom: 1 !important; padding: 0 !important; }
+  /* 本文の文字を、PDF で正しく埋め込める形で出す（Acrobat Reader の警告「埋め込みフォント T3Font_n を抽出できません」の対策）。
+     ・絵文字は、そのままだとカラー絵文字になり、PDF では Type3 フォントとして埋め込まれる。文字として描く（font-variant-emoji）
+     ・本文のフォントに字形が無い記号（▦ など）は、システムの代替フォントが使われ、これも Type3 になる。
+       埋め込める日本語フォント（メイリオ、MS ゴシック）を、総称名（sans-serif）より前に足しておく */
+  #content { font-family: var(--body-font), "Meiryo", "MS Gothic", sans-serif; font-variant-emoji: text; }
   #content h1, #content h2, #content h3, #content h4, #content h5, #content h6 { break-after: avoid; }
   #content tr, #content img, #content .diagram, #content blockquote, #content li { break-inside: avoid; }
   #content thead { display: table-header-group; }
