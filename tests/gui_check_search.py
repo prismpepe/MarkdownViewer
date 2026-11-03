@@ -102,6 +102,13 @@ def drive():
     check("太字の内側から外へまたがる語も探せる", js("[...document.querySelectorAll('#content mark.find-hit')].map(m => m.textContent).join('')"), "字の途中にある語")
     check("またがる一致は、1件として数える", js("finder.count()"), 1)
 
+    # 色分けで <span> に分かれたコードの中でも、またがる語を探せる（変数・記号・文字列は、別の <span>）
+    check("コードが色分けされている（この検査の前提）", js("document.querySelectorAll('#content pre code.highlighted span[class^=tok-]').length > 3"), True)
+    setq('apple = "コードブロック')
+    check("色分けされたコードの中で、<span> をまたぐ語も探せる", (js("finder.count()"), js("[...document.querySelectorAll('#content mark.find-hit')].map(m => m.textContent).join('')")), (1, 'apple = "コードブロック'))
+    setq("コードブロックの中")
+    check("探したあとも、コードの文字は元のまま", js("document.querySelector('#content pre code.highlighted').textContent"), 'apple = "コードブロックの中"\n')
+
     # 段落をまたぐ一致は出さない
     setq("が並ぶ。りんご")
     check("同じ段落の中の語は探せる", js("finder.count()"), 1)

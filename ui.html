@@ -11,6 +11,8 @@
 :root {
   --bg: #ffffff; --fg: #1f2328; --muted: #656d76; --side: #f6f8fa;
   --border: #d0d7de; --accent: #0969da; --sel: #ddf4ff; --code: #f3f4f6;
+  /* コードの色分け（```言語名）。ダークと印刷でも読める組み合わせ */
+  --t-kw: #0033b3; --t-str: #067d17; --t-com: #5c6370; --t-num: #9c4a00; --t-fn: #6639ba; --t-bi: #0b6e99; --t-var: #a8350f; --t-del: #b3261e; --t-ins: #1a7f37;
   /* 表示フォント（フォントの設定で変わる。--head-font は設定したときだけ入る） */
   --ui-font: "Yu Gothic UI", "Segoe UI", sans-serif;
   --body-font: "Yu Gothic UI", "Segoe UI"; --body-size: 14px;
@@ -20,6 +22,7 @@
   :root {
     --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --side: #161b22;
     --border: #30363d; --accent: #58a6ff; --sel: #1f3a5f; --code: #1c2128;
+    --t-kw: #ff7b72; --t-str: #a5d6ff; --t-com: #8b949e; --t-num: #79c0ff; --t-fn: #d2a8ff; --t-bi: #ffa657; --t-var: #ffb38a; --t-del: #ffa198; --t-ins: #7ee787;
   }
 }
 * { box-sizing: border-box; }
@@ -96,6 +99,20 @@ button:hover { border-color: var(--accent); }
   font: var(--code-size) var(--code-font); }
 #content pre { background: var(--code); padding: 12px 16px; border-radius: 6px; overflow-x: auto; }
 #content pre code { padding: 0; background: none; }
+/* コードの色分け。色だけで区別する（太字・斜体にすると、日本語のコメントで字体が変わって読みにくい） */
+#content .tok-k, #content .tok-kc, #content .tok-kd, #content .tok-kn, #content .tok-kp, #content .tok-kr, #content .tok-kt,
+#content .tok-ow, #content .tok-nt, #content .tok-gh, #content .tok-gu { color: var(--t-kw); }
+#content .tok-s, #content .tok-sa, #content .tok-sb, #content .tok-sc, #content .tok-dl, #content .tok-sd, #content .tok-s1,
+#content .tok-s2, #content .tok-sh, #content .tok-si, #content .tok-sr, #content .tok-ss, #content .tok-sx { color: var(--t-str); }
+#content .tok-c, #content .tok-ch, #content .tok-cm, #content .tok-cp, #content .tok-cpf, #content .tok-c1, #content .tok-cs,
+#content .tok-gp { color: var(--t-com); }
+#content .tok-m, #content .tok-mb, #content .tok-mf, #content .tok-mh, #content .tok-mi, #content .tok-mo, #content .tok-il,
+#content .tok-se { color: var(--t-num); }
+#content .tok-nf, #content .tok-fm, #content .tok-nc, #content .tok-nn, #content .tok-nd, #content .tok-ne { color: var(--t-fn); }
+#content .tok-nb, #content .tok-bp, #content .tok-na, #content .tok-no, #content .tok-nl { color: var(--t-bi); }
+#content .tok-nv, #content .tok-vc, #content .tok-vg, #content .tok-vi, #content .tok-vm { color: var(--t-var); }
+#content .tok-gd { color: var(--t-del); }
+#content .tok-gi { color: var(--t-ins); }
 #content blockquote { margin: 0; padding: 0 1em; color: var(--muted);
   border-left: 4px solid var(--border); }
 #content table { border-collapse: collapse; margin: 1em 0; }
@@ -141,7 +158,8 @@ button:hover { border-color: var(--accent); }
 
 /* 印刷・PDF: 画面の部品を隠し、本文だけを紙に流す */
 @media print {
-  :root { --bg: #fff; --fg: #000; --muted: #444; --side: #f2f2f2; --border: #999; --accent: #0645ad; --code: #f2f2f2; }
+  :root { --bg: #fff; --fg: #000; --muted: #444; --side: #f2f2f2; --border: #999; --accent: #0645ad; --code: #f2f2f2;
+    --t-kw: #0033b3; --t-str: #067d17; --t-com: #5c6370; --t-num: #9c4a00; --t-fn: #6639ba; --t-bi: #0b6e99; --t-var: #a8350f; --t-del: #b3261e; --t-ins: #1a7f37; }
   html, body { height: auto !important; overflow: visible !important; display: block !important;
     background: #fff !important; color: #000 !important; }
   #toolbar, #msg, #side, #top, #sBar, #pveil, #fveil { display: none !important; }
@@ -158,6 +176,13 @@ button:hover { border-color: var(--accent); }
   #content tr, #content img, #content .diagram, #content blockquote, #content li { break-inside: avoid; }
   #content thead { display: table-header-group; }
   #content pre { white-space: pre-wrap; word-break: break-all; overflow: visible; break-inside: avoid; }
+  /* コードの中の記号（✓ など）が PDF で Type3 フォントになるのを防ぐ。
+     ・既定のコード用フォント（Consolas, "Cascadia Mono", monospace）の Cascadia Mono は可変フォントで、PDF では Type3 になる。
+       Consolas に無い字（✓ など）を Cascadia Mono が描くため、印刷のときだけ既定から外す（フォント設定で選んだフォントは、そのまま使う）
+     ・字形が無い記号は、本文と同じく、埋め込める日本語フォントで補う
+     ・font の短縮記法が、絵文字の指定（font-variant-emoji）を戻してしまうので、ここで指定し直す */
+  :root { --code-font: Consolas; }
+  #content code, #content pre { font-family: var(--code-font), "Yu Gothic UI", "Segoe UI", "Meiryo", "MS Gothic"; font-variant-emoji: text; }
   #content .diagram { overflow: visible; }
   #content .page-break, #content .pagebreak { break-after: page; height: 0 !important; margin: 0 !important; border: 0 !important; overflow: hidden; }
   #content .page-break-before { break-before: page; }
