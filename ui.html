@@ -124,6 +124,17 @@ button:hover { border-color: var(--accent); }
 #content .diagram.vega { background: #fff; border-radius: 6px; padding: 8px 0; }
 #content .diagram-error { border: 1px solid #cf222e; border-radius: 6px; padding: 8px 12px; margin: 1em 0; }
 #content .diagram-error p { margin: 0 0 6px; color: #cf222e; }
+/* 数式（KaTeX）。独立した行の数式は、中央に置き、長いときは横へスクロールする */
+#content .math.block { text-align: center; overflow-x: auto; overflow-y: hidden; margin: 1em 0; }
+#content .math.block .katex-display { margin: .3em 0; }
+#content .math-error { color: #cf222e; }
+#content .math-error code { color: inherit; background: none; padding: 0; white-space: pre-wrap; }
+#content .math.block.math-error { border: 1px solid #cf222e; border-radius: 6px; padding: 8px 12px; text-align: left; }
+#content .math-error-msg { margin-top: 6px; font-size: .9em; }
+/* 数式の中の日本語（	ext{確率} など）。KaTeX は、日本語を <span class="cjk_fallback"> で包むが、その CSS は無く、
+   親の指定（KaTeX_Main → Times New Roman → serif）をたどって、システムの代替フォントが使われる。
+   PDF では、これが Type3 フォントになり、Acrobat Reader で警告が出る。本文と同じ、埋め込める日本語フォントを指定する */
+#content .katex .cjk_fallback { font-family: "Yu Gothic UI", "Meiryo", "MS Gothic"; }
 
 /* フォントの設定ダイアログ */
 #fveil { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 50; }
@@ -184,6 +195,7 @@ button:hover { border-color: var(--accent); }
   :root { --code-font: Consolas; }
   #content code, #content pre { font-family: var(--code-font), "Yu Gothic UI", "Segoe UI", "Meiryo", "MS Gothic"; font-variant-emoji: text; }
   #content .diagram { overflow: visible; }
+  #content .math.block { overflow: visible; break-inside: avoid; }
   #content .page-break, #content .pagebreak { break-after: page; height: 0 !important; margin: 0 !important; border: 0 !important; overflow: hidden; }
   #content .page-break-before { break-before: page; }
   #content .page-break-after { break-after: page; }
@@ -332,6 +344,46 @@ function loadMermaid() {
   return mermaidReady;
 }
 
+// ---- 数式（KaTeX）。```math、$$ ... $$、文中の $...$ は、Python が <div|span class="math"> に包んで渡す
+let katexReady = null;
+function loadKatex() {
+  if (!katexReady) katexReady = (async () => {
+    const a = await api.get_katex();
+    const st = document.createElement('style'); st.textContent = a.css; document.head.appendChild(st);
+    const s = document.createElement('script'); s.textContent = a.js; document.head.appendChild(s);
+    return window.katex;
+  })();
+  return katexReady;
+}
+
+// root の中の数式を組む。TeX の誤りは、その位置に、原文と理由を見せる
+function typesetMath(root, katex) {
+  root.querySelectorAll('.math:not(.typeset)').forEach(el => {
+    const tex = el.textContent, display = el.classList.contains('block');
+    el.classList.add('typeset');
+    try {
+      katex.render(tex, el, { displayMode: display, throwOnError: true, output: 'html', strict: 'ignore', trust: false });
+    } catch (e) {
+      const why = String((e && (e.rawMessage || e.message)) || e).split('\n')[0];
+      el.classList.add('math-error');
+      el.textContent = '';
+      const code = document.createElement('code'); code.textContent = (display ? '$$ ' : '$') + tex.trim() + (display ? ' $$' : '$');
+      el.appendChild(code);
+      const msg = document.createElement('div'); msg.className = 'math-error-msg'; msg.textContent = '数式を組めませんでした: ' + why;
+      if (display) el.appendChild(msg); else el.title = msg.textContent;
+    }
+  });
+}
+
+async function renderMath(path) {
+  if (!document.querySelector('#content .math:not(.typeset)')) return;
+  let katex;
+  try { katex = await loadKatex(); }
+  catch (e) { katexReady = null; showMsg('数式の描画部品を読み込めませんでした: ' + e); return; }
+  if (current !== path) return;                 // 別の文書へ移ったら打ち切る
+  typesetMath($('content'), katex);
+}
+
 async function renderDiagrams(path) {
   const blocks = [...document.querySelectorAll('#content pre.mermaid-src')];
   if (!blocks.length) return;
@@ -442,6 +494,7 @@ async function openFile(path) {
   const sel = document.querySelector('.item.sel');
   if (sel) sel.scrollIntoView({ block: 'nearest' });
   if (fitMode) fitWidth();
+  await renderMath(r.path);
   await renderDiagrams(r.path);
   await renderVega(r.path);
   if (fitMode) fitWidth();           // 図が出来て幅が変わるので、もう一度合わせる

@@ -25,13 +25,14 @@ import cjk_emphasis
 import dialogs
 import filedrop
 import highlight
+import mathtex
 import printing
 import shellreg
 import uiprefs
 from sanitize import sanitize
 
 MD_EXTENSIONS = (".md", ".markdown", ".mdown", ".mkd")
-APP_VERSION = "1.9.0"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
+APP_VERSION = "1.10.0"          # 画面上部（ウィンドウのタイトル）などに出すバージョン。ここだけ書き換える
 APP_TITLE = f"Markdown ビューア v{APP_VERSION}"
 PROG_ID = "MarkdownViewer.File"
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv"}
@@ -141,6 +142,7 @@ def make_renderer():
     cjk_emphasis.apply(md)       # 日本語の文で、記号に接した ** が強調になるようにする
     autolink.apply(md)           # 文中の URL（https://… や www.…）を、そのままリンクにする（GFM の拡張）
     md.enable(["table", "strikethrough"])
+    mathtex.apply(md)            # 数式（```math、$$ ... $$、文中の $...$）。組版は画面側の KaTeX
     md.use(tasklists_plugin)
     md.use(anchors_plugin, min_level=1, max_level=6)
 
@@ -155,6 +157,8 @@ def make_renderer():
         if tok.info.strip().split(" ")[0].lower() == "mermaid":
             return ('<pre class="mermaid-src"><code>'
                     + escapeHtml(tok.content) + "</code></pre>")
+        if highlight.language_of(tok.info) == mathtex.LANG:         # ```math は、数式として画面で組む
+            return mathtex.block_html(tok.content)
         colored = highlight.render_fence(tok.content, tok.info)     # 言語名つきのコードは、色分けする
         if colored is not None:
             return colored
@@ -420,6 +424,12 @@ class Api:
             with open(resource_path("vendor/" + fname), encoding="utf-8") as f:
                 self._vendor[name] = f.read()
         return self._vendor[name]
+
+    def get_katex(self):
+        """KaTeX（数式の組版）。数式があるときだけ画面が取りに来る。描画部品と、フォントを埋め込んだ CSS を返す。"""
+        if "katex" not in self._vendor:
+            self._vendor["katex"] = mathtex.katex_assets(resource_path("vendor/katex"))
+        return self._vendor["katex"]
 
     # --- 画面の設定（フォント・表示倍率・一覧の表示）-------------------------
     def get_prefs(self):

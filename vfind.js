@@ -37,7 +37,7 @@ const MdSearch = (() => {
       acceptNode(n) {
         const p = n.parentElement;
         if (!p || !n.nodeValue) return NodeFilter.FILTER_REJECT;
-        if (p.closest('svg, script, style, noscript')) return NodeFilter.FILTER_REJECT;
+        if (p.closest('svg, script, style, noscript, .katex')) return NodeFilter.FILTER_REJECT;
         return NodeFilter.FILTER_ACCEPT;
       },
     });

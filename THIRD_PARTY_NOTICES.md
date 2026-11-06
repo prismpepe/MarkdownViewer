@@ -25,6 +25,7 @@ Markdown ビューアは、次のライブラリを、配布物（実行ファ�
 | Vega | 6.4.0 | BSD-3-Clause | グラフの描画（`vendor/vega.min.js`） |
 | Vega-Lite | 6.5.0 | BSD-3-Clause | グラフの描画（`vendor/vega-lite.min.js`） |
 | vega-embed | 7.3.0 | BSD-3-Clause | グラフの描画（`vendor/vega-embed.min.js`） |
+| KaTeX（フォント KaTeX_* を含む） | 0.19.1 | MIT | 数式の組版（`vendor/katex/`） |
 | iconify の `logos` 集（SVG Logos、作者 Gil Barbara） | - | CC0-1.0 | Mermaid の図のアイコン（`vendor/icons/logos.json.gz`） |
 | Python | 3.10.6 | PSF License | 実行環境（実行ファイルに含む） |
 | pywebview | 6.2.1 | BSD-3-Clause | ウィンドウと WebView2 の橋渡し |
@@ -241,6 +242,10 @@ Mermaid・Vega・Vega-Lite・vega-embed は、ビルド済みの JavaScript と�
 ### DOMPurify（Mermaid が内部に含む）
 
 DOMPurify のライセンスは「Mozilla Public License 2.0 または Apache License 2.0」の選択です。このアプリは、**Apache License 2.0** のほうを選んで使っています。
+
+### KaTeX
+
+数式の組版に、KaTeX（`vendor/katex/` の `katex.min.js`、`katex.min.css`、woff2 のフォント）を同梱しています。KaTeX の配布物（npm パッケージ）にも、リポジトリ（GitHub）にも、フォントだけの別のライセンス文は含まれておらず、KaTeX 全体が MIT License で配布されています。ライセンス文は「5. ライセンス文」の MIT License（Khan Academy and other contributors）です。
 
 ### iconify の `logos` 集
 
@@ -878,7 +883,39 @@ THIS SOFTWARE.
 
 </details>
 
-### 11. MIT License
+### 11. The MIT License (MIT)
+
+適用するもの: katex 0.16.47（npm）, KaTeX 0.19.1（フォント KaTeX_* を含む）
+
+<details><summary>ライセンス文を開く</summary>
+
+~~~~
+The MIT License (MIT)
+
+Copyright (c) 2013-2020 Khan Academy and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+~~~~
+
+</details>
+
+### 12. MIT License
 
 適用するもの: layout-base 2.0.1（npm）, layout-base 1.0.2（npm）
 
@@ -910,7 +947,7 @@ SOFTWARE.
 
 </details>
 
-### 12. MIT License
+### 13. MIT License
 
 適用するもの: markdown-it-py 4.2.0（Python）, mdit-py-plugins 0.6.1（Python）
 
@@ -942,7 +979,7 @@ SOFTWARE.
 
 </details>
 
-### 13. MIT License
+### 14. MIT License
 
 適用するもの: path-data-parser 0.1.0（npm）, points-on-curve 0.2.0（npm）
 
@@ -974,7 +1011,7 @@ SOFTWARE.
 
 </details>
 
-### 14. Copyright (c) Microsoft Corporation.
+### 15. Copyright (c) Microsoft Corporation.
 
 適用するもの: tslib 2.9.1（npm）, tslib 2.8.1（npm）
 
@@ -997,7 +1034,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 </details>
 
-### 15. MIT License
+### 16. MIT License
 
 適用するもの: @antfu/install-pkg 2.1.0（npm）
 
@@ -1029,7 +1066,7 @@ SOFTWARE.
 
 </details>
 
-### 16. MIT License
+### 17. MIT License
 
 適用するもの: @braintree/sanitize-url 7.1.2（npm）
 
@@ -1061,7 +1098,7 @@ SOFTWARE.
 
 </details>
 
-### 17. MIT License
+### 18. MIT License
 
 適用するもの: @iconify/types 2.0.0（npm）
 
@@ -1093,7 +1130,7 @@ SOFTWARE.
 
 </details>
 
-### 18. MIT License
+### 19. MIT License
 
 適用するもの: @iconify/utils 3.1.7（npm）
 
@@ -1125,7 +1162,7 @@ SOFTWARE.
 
 </details>
 
-### 19. The MIT License (MIT)
+### 20. The MIT License (MIT)
 
 適用するもの: @mermaid-js/parser 1.2.1（npm）
 
@@ -1157,7 +1194,7 @@ SOFTWARE.
 
 </details>
 
-### 20. MIT License
+### 21. MIT License
 
 適用するもの: @upsetjs/venn.js 2.0.0（npm）
 
@@ -1190,7 +1227,7 @@ SOFTWARE.
 
 </details>
 
-### 21. Copyright (c) 2009-2024, Marcel Hellkamp.
+### 22. Copyright (c) 2009-2024, Marcel Hellkamp.
 
 適用するもの: bottle 0.13.4（Python）
 
@@ -1220,7 +1257,7 @@ THE SOFTWARE.
 
 </details>
 
-### 22. Except when otherwise stated (look for LICENSE files in directories or
+### 23. Except when otherwise stated (look for LICENSE files in directories or
 
 適用するもの: cffi 2.1.1（Python）
 
@@ -1252,7 +1289,7 @@ documentation is licensed as follows:
 
 </details>
 
-### 23. MIT License
+### 24. MIT License
 
 適用するもの: clr_loader 0.3.1（Python）
 
@@ -1284,7 +1321,7 @@ SOFTWARE.
 
 </details>
 
-### 24. Copyright (c) 2016-2026, The Cytoscape Consortium.
+### 25. Copyright (c) 2016-2026, The Cytoscape Consortium.
 
 適用するもの: cytoscape 3.34.4（npm）
 
@@ -1314,7 +1351,7 @@ SOFTWARE.
 
 </details>
 
-### 25. Copyright (c) 2016-2018, The Cytoscape Consortium.
+### 26. Copyright (c) 2016-2018, The Cytoscape Consortium.
 
 適用するもの: cytoscape-cose-bilkent 4.1.0（npm）
 
@@ -1344,7 +1381,7 @@ SOFTWARE.
 
 </details>
 
-### 26. Copyright (c) 2018 - present, iVis-at-Bilkent.
+### 27. Copyright (c) 2018 - present, iVis-at-Bilkent.
 
 適用するもの: cytoscape-fcose 2.2.0（npm）
 
@@ -1374,7 +1411,7 @@ SOFTWARE.
 
 </details>
 
-### 27. Copyright 2010-2020 Mike Bostock
+### 28. Copyright 2010-2020 Mike Bostock
 
 適用するもの: d3-array 2.12.1（npm）
 
@@ -1412,7 +1449,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </details>
 
-### 28. Copyright 2010-2023 Mike Bostock
+### 29. Copyright 2010-2023 Mike Bostock
 
 適用するもの: d3-array 3.2.4（npm）
 
@@ -1436,7 +1473,7 @@ THIS SOFTWARE.
 
 </details>
 
-### 29. Copyright 2012-2026 Mike Bostock
+### 30. Copyright 2012-2026 Mike Bostock
 
 適用するもの: d3-contour 4.0.3（npm）
 
@@ -1460,7 +1497,7 @@ THIS SOFTWARE.
 
 </details>
 
-### 30. Copyright 2018-2026 Observable, Inc.
+### 31. Copyright 2018-2026 Observable, Inc.
 
 適用するもの: d3-delaunay 6.0.6（npm）
 
@@ -1485,7 +1522,7 @@ THIS SOFTWARE.
 
 </details>
 
-### 31. Copyright 2013-2026 Mike Bostock
+### 32. Copyright 2013-2026 Mike Bostock
 
 適用するもの: d3-dsv 3.0.2（npm）
 
@@ -1509,7 +1546,7 @@ THIS SOFTWARE.
 
 </details>
 
-### 32. Copyright 2010-2026 Mike Bostock
+### 33. Copyright 2010-2026 Mike Bostock
 
 適用するもの: d3-ease 3.0.2（npm）
 
@@ -1548,7 +1585,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </details>
 
-### 33. Copyright 2016-2026 Mike Bostock
+### 34. Copyright 2016-2026 Mike Bostock
 
 適用するもの: d3-fetch 3.0.2（npm）
 
@@ -1572,7 +1609,7 @@ THIS SOFTWARE.
 
 </details>
 
-### 34. Copyright 2010-2026 Mike Bostock
+### 35. Copyright 2010-2026 Mike Bostock
 
 適用するもの: d3-geo 3.1.2（npm）
 
@@ -1617,7 +1654,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 </details>
 
-### 35. Copyright 2013-2021 Mike Bostock
+### 36. Copyright 2013-2021 Mike Bostock
 
 適用するもの: d3-geo-projection 4.0.0（npm）
 
@@ -1665,7 +1702,7 @@ THE SOFTWARE.
 
 </details>
 
-### 36. Copyright 2015-2016 Mike Bostock
+### 37. Copyright 2015-2016 Mike Bostock
 
 適用するもの: d3-path 1.0.9（npm）
 
@@ -1703,7 +1740,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </details>
 
-### 37. Copyright 2015-2026 Mike Bostock
+### 38. Copyright 2015-2026 Mike Bostock
 
 適用するもの: d3-path 3.1.1（npm）
 
@@ -1727,7 +1764,7 @@ THIS SOFTWARE.
 
 </details>
 
-### 38. Copyright 2015, Mike Bostock
+### 39. Copyright 2015, Mike Bostock
 
 適用するもの: d3-sankey 0.12.3（npm）
 
@@ -1765,7 +1802,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </details>
 
-### 39. Copyright 2010-2026 Mike Bostock
+### 40. Copyright 2010-2026 Mike Bostock
 
 適用するもの: d3-scale-chromatic 3.1.1（npm）
 
@@ -1804,7 +1841,7 @@ specific language governing permissions and limitations under the License.
 
 </details>
 
-### 40. Copyright 2010-2015 Mike Bostock
+### 41. Copyright 2010-2015 Mike Bostock
 
 適用するもの: d3-shape 1.3.7（npm）
 
@@ -1842,7 +1879,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 </details>
 
-### 41. Original dagre-d3 copyright: Copyright (c) 2013 Chris Pettitt
+### 42. Original dagre-d3 copyright: Copyright (c) 2013 Chris Pettitt
 
 適用するもの: dagre-d3-es 7.0.14（npm）
 
@@ -1876,7 +1913,7 @@ THE SOFTWARE.
 
 </details>
 
-### 42. MIT License
+### 43. MIT License
 
 適用するもの: dayjs 1.11.23（npm）
 
@@ -1908,7 +1945,7 @@ SOFTWARE.
 
 </details>
 
-### 43. ISC License
+### 44. ISC License
 
 適用するもの: delaunator 5.1.0（npm）
 
@@ -1934,7 +1971,7 @@ THIS SOFTWARE.
 
 </details>
 
-### 44. Copyright Mathias Bynens <https://mathiasbynens.be/>
+### 45. Copyright Mathias Bynens <https://mathiasbynens.be/>
 
 適用するもの: emoji-regex 10.6.0（npm）
 
@@ -1965,7 +2002,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 </details>
 
-### 45. MIT License
+### 46. MIT License
 
 適用するもの: es-toolkit 1.53.1（npm）
 
@@ -1997,7 +2034,7 @@ SOFTWARE.
 
 </details>
 
-### 46. MIT License
+### 47. MIT License
 
 適用するもの: escalade 3.2.0（npm）
 
@@ -2017,7 +2054,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </details>
 
-### 47. (The MIT License)
+### 48. (The MIT License)
 
 適用するもの: fast-json-patch 3.1.1（npm）
 
@@ -2050,7 +2087,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 </details>
 
-### 48. ISC License (ISC)
+### 49. ISC License (ISC)
 
 適用するもの: get-caller-file 2.0.5（npm）
 
@@ -2067,7 +2104,7 @@ THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH RE
 
 </details>
 
-### 49. MIT License
+### 50. MIT License
 
 適用するもの: hachure-fill 0.5.2（npm）
 
@@ -2099,7 +2136,7 @@ SOFTWARE.
 
 </details>
 
-### 50. CC0 1.0 Universal
+### 51. CC0 1.0 Universal
 
 適用するもの: iconify の logos 集（SVG Logos）
 
@@ -2226,7 +2263,7 @@ For more information, please see
 
 </details>
 
-### 51. Copyright (c) 2011 Alexander Shtuchkin
+### 52. Copyright (c) 2011 Alexander Shtuchkin
 
 適用するもの: iconv-lite 0.6.3（npm）
 
@@ -2257,7 +2294,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 </details>
 
-### 52. (The MIT License)
+### 53. (The MIT License)
 
 適用するもの: import-meta-resolve 4.2.0（npm）
 
@@ -2342,7 +2379,7 @@ IN THE SOFTWARE.
 
 </details>
 
-### 53. The MIT License (MIT)
+### 54. The MIT License (MIT)
 
 適用するもの: json-stringify-pretty-compact 4.0.0（npm）
 
@@ -2370,38 +2407,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-~~~~
-
-</details>
-
-### 54. The MIT License (MIT)
-
-適用するもの: katex 0.16.47（npm）
-
-<details><summary>ライセンス文を開く</summary>
-
-~~~~
-The MIT License (MIT)
-
-Copyright (c) 2013-2020 Khan Academy and other contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 ~~~~
 
 </details>
