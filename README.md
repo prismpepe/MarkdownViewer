@@ -1,0 +1,63 @@
+# Markdown ビューア
+
+Windows 11 向けの、Markdown 閲覧専用アプリです。フォルダーの中の Markdown を一覧から選んで読み、そのまま印刷・PDF 保存できます。文書は書き換えません（書くときは、姉妹アプリの Markdown エディタを使います）。
+
+Python と pywebview で作り、描画は Microsoft Edge の WebView2 を使います。
+
+## 主な機能
+
+- フォルダーの一覧から文書を選んで読む。ファイル名での絞り込み
+- 文書内の検索（全件ハイライト、正規表現、次へ・前へ）
+- 表（列の配置）、タスクリスト、取り消し線、URL の自動リンク、日本語の強調記号
+- コードの色分け（` ```bat ` のように言語名を書く。バッチ・PowerShell・シェルを含む約500言語）
+- Mermaid の図、Vega-Lite のグラフ
+- ローカルの画像（相対パス・絶対パス・`file:///`）
+- 印刷と PDF 保存（ページ範囲、用紙・向き・余白・倍率、改ページの指定）
+- 表示倍率、フォントの設定、ダークモード
+- ウィンドウへのドラッグ＆ドロップ、フォルダーの右クリックから開く
+
+## 使う
+
+インストールは不要です。ビルド済みの `MarkdownViewer.exe` を起動します。
+
+```
+MarkdownViewer.exe [ファイル.md | フォルダー]
+MarkdownViewer.exe --register     エクスプローラーの「プログラムから開く」に登録
+MarkdownViewer.exe --unregister   登録を解除
+```
+
+動作環境は、Windows 11 と Microsoft Edge WebView2 ランタイムです。使い方の詳細は [取扱説明書](docs/取扱説明書.md) を見てください。
+
+## 開発
+
+```
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python mdviewer.py [ファイル.md | フォルダー]
+```
+
+| 目的 | コマンド |
+| --- | --- |
+| テスト | `.venv\Scripts\python -m pytest` |
+| 画面を実際に動かす確認 | `.venv\Scripts\python tests\gui_check_search.py`（`tests\gui_check_*.py`。設定は一時フォルダーに向ける） |
+| exe を作る（テスト → PyInstaller） | `.\build.cmd` |
+| 配布用 zip を作る | `python tools\make_release.py` |
+
+主なファイル:
+
+| ファイル | 役割 |
+| --- | --- |
+| `mdviewer.py` | 本体。Markdown を HTML にして、画面（`ui.html`）へ渡す |
+| `ui.html` / `vfind.js` / `print.js` | 画面、文書内検索、印刷ダイアログ |
+| `sanitize.py` | 埋め込み HTML の許可リスト方式の除去 |
+| `highlight.py` | コードの色分け（Pygments） |
+| `autolink.py` / `cjk_emphasis.py` | URL の自動リンク、日本語の強調記号 |
+| `printing.py` / `shellreg.py` / `filedrop.py` / `uiprefs.py` | 印刷・PDF、エクスプローラーへの登録、ドロップ、設定の保存 |
+| `vendor/` | 同梱の外部ライブラリ（Mermaid、Vega / Vega-Lite / vega-embed、iconify の `logos` アイコン集） |
+
+設計や仕様は [簡易仕様書](docs/簡易仕様書.md) にあります。
+
+## 補足
+
+- このリポジトリにはライセンスを設定していません。同梱している外部ライブラリは、それぞれのライセンスに従います。
+- 姉妹アプリの Markdown エディタとは、`autolink.py`、`cjk_emphasis.py`、`sanitize.py`、`highlight.py` などを、同じ内容で持っています。
