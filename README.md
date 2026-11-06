@@ -1,6 +1,9 @@
 # Markdown ビューア
 
-![MarkdownViewer](docs/MarkdownViewer.gif)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/MarkdownViewer-dark.png">
+  <img alt="Markdown ビューアの画面" src="docs/images/MarkdownViewer-light.png">
+</picture>
 
 Windows 11 向けの、Markdown 閲覧専用アプリです。フォルダーの中の Markdown を一覧から選んで読み、そのまま印刷・PDF 保存できます。文書は書き換えません（書くときは、姉妹アプリの Markdown エディタを使います）。
 
@@ -46,6 +49,7 @@ python -m venv .venv
 | 画面を実際に動かす確認 | `.venv\Scripts\python tests\gui_check_search.py`（`tests\gui_check_*.py`。設定は一時フォルダーに向ける） |
 | exe を作る（テスト → PyInstaller） | `.\build.cmd` |
 | 配布用 zip を作る | `python tools\make_release.py` |
+| README のスクリーンショットを撮り直す（先に `.\build.cmd`） | `pwsh .\tools\make_screenshots.ps1`（`docs\sample` のサンプル文書を、ライトとダークで撮る） |
 
 主なファイル:
 
